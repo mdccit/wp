@@ -1,4 +1,9 @@
 <?php
+require_once get_stylesheet_directory() . '/inc/class-cm-session-manager.php';
+require_once get_stylesheet_directory() . '/inc/class-cm-cart-manager.php';
+$session_manager = new \CM\Session_Manager();
+$cart_manager = new \CM\Session_Manager();
+$session_manager->start_session();
 
 /**
  * Enqueue script and styles for child theme
@@ -78,7 +83,7 @@ add_filter( 'woocommerce_product_single_add_to_cart_text', 'cm_woocommerce_add_t
 /**
 * CM Session Table Creation Define Versioning 
 **/
-define('CM_SESSION_TABLE_VERSION', '1.2');
+define('CM_SESSION_TABLE_VERSION', '1.4');
 define('CM_SESSION_TABLE_VERSION_OPTION', 'cm_session_table_version');
 
 
@@ -97,7 +102,7 @@ function create_cm_session_table() {
     $table_name = $wpdb->prefix . 'cm_sessions';
     
     // Define current version
-    define('CURRENT_CM_SESSION_TABLE_VERSION', '1.3'); // Update this as you release new versions
+    define('CURRENT_CM_SESSION_TABLE_VERSION', '1.4'); // Update this as you release new versions
 
     // Check if the table already exists
     $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") == $table_name;
@@ -627,6 +632,9 @@ function cm_login_user_with_url_session_key() {
      
     if ($user_id) {
 
+
+        //expire_sessions_by_email($session_email); // expire the current active sessions for the user
+
         // Generate a dynamic IV for each encryption
          $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length('aes-256-cbc'));
 
@@ -718,6 +726,27 @@ function getAndDecryptSessionKeyFromCookie($cookieName = 'cm_session_key') {
 
     return $decryptedSessionKey;
 }
+
+function expire_sessions_by_email($session_email) {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'cm_sessions';
+
+    // Calculate the threshold for active sessions based on the current time minus 1 day
+    $active_session_threshold = current_time('mysql', 1); // Sessions created within the last day are considered active
+
+    // Expire all active sessions associated with the session_email by setting their expires_at to the current timestamp
+    $result = $wpdb->query($wpdb->prepare(
+        "UPDATE $table_name SET expires_at = %s WHERE session_email = %s AND created_at >= DATE_SUB(%s, INTERVAL 1 DAY)",
+        $active_session_threshold, $session_email, $active_session_threshold
+    ));
+
+    if (false === $result) {
+        error_log('Failed to expire sessions by email.');
+    } else {
+        error_log('Sessions expired successfully by email.');
+    }
+}
+
 
 
 
