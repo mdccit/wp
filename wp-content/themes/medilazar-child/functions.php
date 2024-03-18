@@ -3,7 +3,6 @@ require_once get_stylesheet_directory() . '/inc/class-cm-session-manager.php';
 require_once get_stylesheet_directory() . '/inc/class-cm-cart-manager.php';
 $session_manager = new \CM\Session_Manager();
 $cart_manager = new \CM\Session_Manager();
-$session_manager->start_session();
 
 /**
  * Enqueue script and styles for child theme
@@ -590,29 +589,6 @@ function xml_error_response($returnCode, $response_message){
 }
 
 
-/**
- * Retrieves the expiration time for a given session key from the cm_sessions table.
- *
- * @param string $session_key The session key to look up.
- * @return string|null The expiration time as a string in 'Y-m-d H:i:s' format, or null if not found.
- */
-function get_cm_session_expires_at($session_key) {
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'cm_sessions';
-
-    // Prepare the SQL query to select the expires_at field
-    $query = $wpdb->prepare(
-        "SELECT expires_at FROM $table_name WHERE session_key = %s",
-        $session_key
-    );
-
-    // Execute the query and get the result
-    $expires_at = $wpdb->get_var($query);
-
-    return $expires_at;
-}
-
-define('ENCRYPTION_KEY', base64_decode('XOyFM2ZvbUisqHNRIuN8T9NAH4Rs4lRZZBWVT8VTDZE='));
 
 /**
  * Logs in a user based on session key and email passed via URL parameters.
@@ -626,10 +602,11 @@ function cm_login_user_with_url_session_key() {
         return;
     }
 
+    global $session_manager;
 	$session_key = sanitize_text_field($_GET['sessionKey']);
 	$session_email = sanitize_email($_GET['userEmail']);
-    $user_id = validate_session_key($session_key, $session_email);
-     
+    $user_id = $session_manager->validate_session_key($session_key, $session_email);
+
     if ($user_id) {
 
 
@@ -649,7 +626,7 @@ function cm_login_user_with_url_session_key() {
         $encrypted_session_key_with_iv = base64_encode($iv . $encrypted_session_key);
 
 
-        $expires_at = get_cm_session_expires_at($session_key);
+        $expires_at = $session_manager->get_cm_session_expires_at($session_key);
         $expires_at_timestamp = strtotime($expires_at);
         $current_time = time();
         $expiration_period = $expires_at_timestamp - $current_time;
@@ -660,7 +637,7 @@ function cm_login_user_with_url_session_key() {
             wp_set_auth_cookie($user_id);
 
             // Set the session cookie
-            set_cm_session_cookie($encrypted_session_key_with_iv,$expiration_period);
+            $session_manager->set_cm_session_cookie($encrypted_session_key_with_iv,$expiration_period);
             // Redirect to the homepage on Login Success
             wp_redirect(home_url());
             exit;
@@ -678,75 +655,6 @@ function cm_login_user_with_url_session_key() {
 		exit;
     }
 }
-
-
-/**
- * Sets a session key cookie for the user.
- *
- * @param string $session_key The session key to be set in the cookie.
- * @param int $expiration_period The number of seconds until the cookie should expire.
- * @param string $path The path on the server in which the cookie will be available on.
- * @param bool $secure Indicates that the cookie should only be transmitted over a secure HTTPS connection.
- * @param bool $httponly When TRUE the cookie will be made accessible only through the HTTP protocol.
- * @param string $samesite Prevents the browser from sending this cookie along with cross-site requests.
- */
-function set_cm_session_cookie($encrypted_session_key_with_iv, $expiration_period = 86400, $path = '/', $secure = true, $httponly = true, $samesite = 'Lax') {
-    $cookie_name = 'cm_session_key';
-    
-    $cookie_value = $encrypted_session_key_with_iv;
-    $expiration = time() + $expiration_period;
-    
-    setcookie($cookie_name, $cookie_value, [
-        'expires' => $expiration,
-        'path' => $path,
-        'secure' => $secure,
-        'httponly' => $httponly,
-        'samesite' => $samesite
-    ]);
-}
-
-
-function getAndDecryptSessionKeyFromCookie($cookieName = 'cm_session_key') {
-    if (!isset($_COOKIE[$cookieName])) {
-        return false; // Cookie not set
-    }
-
-    $encodedData = $_COOKIE[$cookieName];
-    $combinedData = base64_decode($encodedData);
-
-    $ivLength = openssl_cipher_iv_length('aes-256-cbc');
-    $iv = substr($combinedData, 0, $ivLength);
-    $encryptedSessionKey = substr($combinedData, $ivLength);
-
-    $decryptedSessionKey = openssl_decrypt($encryptedSessionKey, 'aes-256-cbc', ENCRYPTION_KEY, 0, $iv);
-
-    if ($decryptedSessionKey === false) {
-        throw new Exception('Decryption failed');
-    }
-
-    return $decryptedSessionKey;
-}
-
-function expire_sessions_by_email($session_email) {
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'cm_sessions';
-
-    // Calculate the threshold for active sessions based on the current time minus 1 day
-    $active_session_threshold = current_time('mysql', 1); // Sessions created within the last day are considered active
-
-    // Expire all active sessions associated with the session_email by setting their expires_at to the current timestamp
-    $result = $wpdb->query($wpdb->prepare(
-        "UPDATE $table_name SET expires_at = %s WHERE session_email = %s AND created_at >= DATE_SUB(%s, INTERVAL 1 DAY)",
-        $active_session_threshold, $session_email, $active_session_threshold
-    ));
-
-    if (false === $result) {
-        error_log('Failed to expire sessions by email.');
-    } else {
-        error_log('Sessions expired successfully by email.');
-    }
-}
-
 
 
 
@@ -772,100 +680,16 @@ function cm_login_error_message($message) {
 add_filter('login_message', 'cm_login_error_message');
 
 
-/**
- * Validates a session key and email combination.
- *
- * Checks if the given session key and email correspond to a valid session in the database
- * that has not yet expired. If the session is valid, it returns the user ID associated with
- * the session. Otherwise, it returns false.
- *
- * @global wpdb $wpdb WordPress database abstraction object.
- *
- * @param string $session_key   The session key to validate.
- * @param string $session_email The email associated with the session key.
- * @return int|false The user ID associated with the session if valid, otherwise false.
- */
-
-function validate_session_key($session_key, $session_email) {
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'cm_sessions';
-    $current_time = current_time('mysql');
-
-    $session = $wpdb->get_row($wpdb->prepare(
-        "SELECT * FROM $table_name WHERE session_key = %s AND session_email = %s AND expires_at > %s",
-        $session_key,
-        $session_email,
-        $current_time
-    ));
-
-    if (null !== $session) {
-        // Session is valid
-        return $session->user_id;
-    }
-
-    // Invalid session
-    return false;
-}
-
-
-function validateSessionCookieKey($sessionKey) {
-    
-    if (strlen($sessionKey) != 20) { // Assuming session keys are 20 characters long
-        return false;
-    }
-
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'cm_sessions';
-    $current_time = current_time('mysql');
-
-    $session = $wpdb->get_row($wpdb->prepare(
-        "SELECT * FROM $table_name WHERE session_key = %s AND expires_at > %s",
-        $sessionKey,
-        $current_time
-    ));
-
-    if (null !== $session) {
-        // Session is valid
-        return $session->user_id;
-    }else{
-        return false;
-    }
-}
-
-
-/**
- * Determines if the current user is identified as a session-specific user based on a session key.
- *
- * This function checks for the presence of a 'cm_session_key' cookie, which is expected
- * to store an encrypted session key for session-specific users. If the cookie exists and is not empty,
- * the function proceeds to decrypt the session key using `getAndDecryptSessionKeyFromCookie()`. 
- * After decryption, it validates the format of the decrypted session key with `validate_session_key_format()`.
- * If the format is valid, it further validates the session key with `validateSessionCookieKey()`.
- *
- * If all checks pass (the cookie exists, the session key decrypts successfully, and passes format and
- * validation checks), the function concludes that the user is session-specific and returns true.
- * Otherwise, it returns false, indicating the user is a normal user or the session key is invalid.
- *
- * @return bool True if the user is session-specific based on a valid, decrypted, and formatted session key; 
- *              false otherwise.
- *
- * Note:
- * - `getAndDecryptSessionKeyFromCookie()`: Assumes this function retrieves, decrypts, and returns 
- *    the session key from the 'cm_session_key' cookie.
- * - `validate_session_key_format()`: Assumes this function checks the decrypted session key's format 
- *    to meet specific criteria (e.g., length, characters).
- * - `validateSessionCookieKey()`: Further validates the session key, possibly against a database 
- *    or other criteria, to ensure it's active or recognized.
- */
 function is_session_specific_user() {
 
-    $decryptedSessionKey = getAndDecryptSessionKeyFromCookie();
+    global $session_manager;
+    $decryptedSessionKey = $session_manager->getAndDecryptSessionKeyFromCookie();
 
 
     if (isset($_COOKIE['cm_session_key']) && !empty($_COOKIE['cm_session_key'])) {
        
-        if (validate_session_key_format($decryptedSessionKey)) {
-            if ($decryptedSessionKey && validateSessionCookieKey($decryptedSessionKey)) {
+        if ($session_manager->validate_session_key_format($decryptedSessionKey)) {
+            if ($decryptedSessionKey && $session_manager->validateSessionCookieKey($decryptedSessionKey)) {
                 return true;
             } else {
                 return false;
@@ -875,9 +699,6 @@ function is_session_specific_user() {
     return false; // This is a normal user
 }
 
-function validate_session_key_format($session_key) {
-    return strlen($session_key) === 20;
-}
 
 
 /* ////////////////////////////////////////////
@@ -938,21 +759,6 @@ add_action('init', 'create_cm_cart_data_table');
 
 
 add_action('woocommerce_add_to_cart', 'custom_handle_add_to_cart', 10, 6);
-
-/**
- * Handles adding products to the cart for session-specific users by updating their
- * cart data in the custom 'wp_cm_cart_data' table and logs the process.
- *
- * For users identified as session-specific through the `is_session_specific_user` check,
- * this function retrieves the session key, decodes and decrypts it, then serializes the
- * current cart data and updates or inserts it into the 'wp_cm_cart_data' table based on
- * the session ID linked to the session key. It logs each significant step of the process
- * and any errors encountered. If the operation is not triggered via AJAX, it redirects
- * the user to the WooCommerce cart page to prevent the default session cart handling.
- *
- * Logging is performed via WC_Logger for monitoring and debugging purposes.
- */
-
 
  function custom_handle_add_to_cart($cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data) {
     if (is_session_specific_user()) {
@@ -1018,7 +824,8 @@ add_action('woocommerce_add_to_cart', 'custom_handle_add_to_cart', 10, 6);
 function custom_filter_cart_contents() {
     if (is_session_specific_user()) {
         global $woocommerce, $wpdb;
-        $session_key = get_session_key_from_cookie();
+        global $session_manager;
+        $session_key = $session_manager->get_session_key_from_cookie();
 
         $session_id = get_session_id_by_key($session_key);
         $table_name = $wpdb->prefix . 'cm_cart_data';
@@ -1043,10 +850,11 @@ add_action('woocommerce_before_cart', 'custom_filter_cart_contents');
 
 add_action('woocommerce_checkout_create_order', 'custom_checkout_create_order', 10, 2);
 function custom_checkout_create_order($order, $data) {
+    global $session_manager;
     if (is_session_specific_user()) {
         global $wpdb;
-        $session_key = get_session_key_from_cookie();
-        $session_id = get_session_id_by_key($session_key);
+        $session_key = $session_manager->get_session_key_from_cookie();
+        $session_id = $session_manager->get_session_id_by_key($session_key);
         $table_name = $wpdb->prefix . 'cm_cart_data';
         $cart_data = $wpdb->get_var($wpdb->prepare("SELECT cart_data FROM $table_name WHERE session_id = %d", $session_id));
 
@@ -1057,83 +865,6 @@ function custom_checkout_create_order($order, $data) {
     }
 }
 
-
-
-
-
-
-/**
- * Retrieves and decrypts the session key stored in the 'cm_session_key' cookie.
- *
- * This function looks for the 'cm_session_key' cookie, which is expected to contain an
- * encrypted session key. The session key is encrypted using AES-256-CBC algorithm and is
- * base64-encoded. The encoded string includes both the initialization vector (IV) and the
- * encrypted session key. This function extracts the IV and the encrypted session key, decrypts
- * it using the same algorithm and the predefined ENCRYPTION_KEY, and returns the decrypted
- * session key.
- *
- * Preconditions:
- * - The 'cm_session_key' cookie must be present and contain the base64-encoded data.
- * - ENCRYPTION_KEY constant must be defined and hold the encryption key used to encrypt the session key.
- *
- * @return mixed The decrypted session key if successful, or false if the cookie is not set, decryption fails,
- *               or any other issue occurs during the process. Typically returns a string (decrypted session key)
- *               or boolean false on failure.
- *
- */
-
-
-function get_session_key_from_cookie() {
-    if (!isset($_COOKIE['cm_session_key'])) {
-        return false;
-    }
-
-    $encodedData = $_COOKIE['cm_session_key'];
-    $combinedData = base64_decode($encodedData);
-
-    $ivLength = openssl_cipher_iv_length('aes-256-cbc');
-    $iv = substr($combinedData, 0, $ivLength);
-    $encryptedSessionKey = substr($combinedData, $ivLength);
-
-    $decryptedSessionKey = openssl_decrypt($encryptedSessionKey, 'aes-256-cbc', ENCRYPTION_KEY, 0, $iv);
-
-    if ($decryptedSessionKey === false) {
-        return false; // Decryption failed
-    }
-
-    return $decryptedSessionKey;
-}
-
-
-/**
- * Retrieves the session ID associated with a given session key from the database.
- *
- * This function queries the custom session table (`wp_cm_sessions`) in the WordPress database
- * to find the session ID corresponding to the provided session key. The table structure is assumed
- * to have at least two columns: `session_id` and `session_key`. This function is particularly useful
- * in custom session management scenarios, where each unique session key is associated with a specific
- * session ID, allowing for the tracking and management of custom session data.
- *
- * @param string $session_key The session key for which to retrieve the associated session ID.
- * @return mixed The session ID if found, or false if no matching session is found. The return type
- *               is mixed, typically an integer for the session ID or boolean false on failure.
- *
- */
-
-function get_session_id_by_key($session_key) {
-    global $wpdb;
-    
-    // Assuming your sessions table is named 'wp_cm_sessions' and has columns 'session_id' and 'session_key'
-    $table_name = $wpdb->prefix . 'cm_sessions';
-    $query = $wpdb->prepare("SELECT session_id FROM $table_name WHERE session_key = %s LIMIT 1", $session_key);
-    $session_id = $wpdb->get_var($query);
-
-    if (empty($session_id)) {
-        return false; // No matching session found
-    }
-
-    return $session_id;
-}
 
 
 add_action('wp_logout', 'clear_cm_session_key_cookie');
