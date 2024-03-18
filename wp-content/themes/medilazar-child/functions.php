@@ -762,8 +762,8 @@ add_action('woocommerce_add_to_cart', 'custom_handle_add_to_cart', 10, 6);
 
  function custom_handle_add_to_cart($cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data) {
     if (is_session_specific_user()) {
-        global $woocommerce, $wpdb;
-        $session_key = get_session_key_from_cookie(); // This function retrieves and validates the session key
+        global $woocommerce, $wpdb, $session_manager;
+        $session_key = $session_manager->get_session_key_from_cookie(); // This function retrieves and validates the session key
 
         $table_name = $wpdb->prefix . 'cm_cart_data';
         
@@ -773,11 +773,22 @@ add_action('woocommerce_add_to_cart', 'custom_handle_add_to_cart', 10, 6);
             $session_key
         ));
 
+        if (!$session_id) {
+            // If no session_id is found, possibly create a new session or handle the error
+            return; // Exit the function or handle accordingly
+        }
+
         // Serialize the current cart data
         $cart_data = serialize($woocommerce->cart->get_cart());
 
-        if ($session_id) {
-            // Update the cart data for the existing session
+        // Check if a record already exists for the given session_id
+        $exists = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $table_name WHERE session_id = %d",
+            $session_id
+        ));
+
+        if ($exists > 0) {
+            // If a record exists, update the existing cart data
             $result = $wpdb->update(
                 $table_name,
                 array(
@@ -789,16 +800,16 @@ add_action('woocommerce_add_to_cart', 'custom_handle_add_to_cart', 10, 6);
                 array('%d') // Where formats
             );
         } else {
-            // Insert new cart data for the new session
+            // If no record exists, insert a new one
             $result = $wpdb->insert(
                 $table_name,
                 array(
-                    'session_id' => $session_id, // This would be obtained from creating a new session entry
+                    'session_id' => $session_id,
                     'cart_data' => $cart_data,
                     'created_at' => current_time('mysql', 1), // Use GMT time
                     'updated_at' => current_time('mysql', 1) // Use GMT time
                 ),
-                array('%d', '%s', '%s', '%s')
+                array('%d', '%s', '%s', '%s') // Value formats
             );
         }
 
@@ -827,7 +838,7 @@ function custom_filter_cart_contents() {
         global $session_manager;
         $session_key = $session_manager->get_session_key_from_cookie();
 
-        $session_id = get_session_id_by_key($session_key);
+        $session_id = $session_manager->get_session_id_by_key($session_key);
         $table_name = $wpdb->prefix . 'cm_cart_data';
         $session_cart_data_serialized = $wpdb->get_var($wpdb->prepare("SELECT cart_data FROM $table_name WHERE session_id = %d", $session_id));
 
