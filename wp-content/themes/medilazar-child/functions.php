@@ -925,53 +925,60 @@ add_action('woocommerce_add_to_cart', 'custom_handle_add_to_cart', 10, 6);
  */
 
 
-function custom_handle_add_to_cart( $cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data  ) {
-
-
+ function custom_handle_add_to_cart($cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data) {
     if (is_session_specific_user()) {
         global $woocommerce, $wpdb;
-        $session_key = get_session_key_from_cookie(); // Assume this function retrieves and validates the session key
+        $session_key = get_session_key_from_cookie(); // This function retrieves and validates the session key
 
-        // Serialize cart data
+        $table_name = $wpdb->prefix . 'cm_cart_data';
+        
+        // Attempt to fetch the session ID for the current session key and email
+        $session_id = $wpdb->get_var($wpdb->prepare(
+            "SELECT session_id FROM {$wpdb->prefix}cm_sessions WHERE session_key = %s ",
+            $session_key
+        ));
+
+        // Serialize the current cart data
         $cart_data = serialize($woocommerce->cart->get_cart());
 
-        // Insert or update the cart data in wp_cm_cart_data table
-        $table_name = $wpdb->prefix . 'cm_cart_data';
-        $session_id = get_session_id_by_key($session_key); // this function gets the session ID from the session key
-
-        $result = $wpdb->replace(
-            $table_name,
-            array(
-                'session_id' => $session_id,
-                'cart_data' => $cart_data,
-                'created_at' => current_time('mysql', 1), // Use GMT time
-                'updated_at' => current_time('mysql', 1) // Use GMT time
-            ),
-            array(
-                '%d',
-                '%s',
-                '%s',
-                '%s'
-            )
-        );
-
-        if ( false === $result ) {
-            error_log('DB FAILED.');
-            $product = wc_get_product($product_id);
-            $product_name = $product ? $product->get_name() : 'Unknown Product';
-            $log_message = sprintf('Added to cart for session-specific user (Session ID: %s): Product ID: %s, Name: %s, Quantity: %s', $session_id, $product_id, $product_name, $quantity);
-            error_log($log_message);
+        if ($session_id) {
+            // Update the cart data for the existing session
+            $result = $wpdb->update(
+                $table_name,
+                array(
+                    'cart_data' => $cart_data,
+                    'updated_at' => current_time('mysql', 1) // Use GMT time
+                ),
+                array('session_id' => $session_id), // Where clause
+                array('%s', '%s'), // Value formats
+                array('%d') // Where formats
+            );
         } else {
-            error_log('DB SUCCESS.');
+            // Insert new cart data for the new session
+            $result = $wpdb->insert(
+                $table_name,
+                array(
+                    'session_id' => $session_id, // This would be obtained from creating a new session entry
+                    'cart_data' => $cart_data,
+                    'created_at' => current_time('mysql', 1), // Use GMT time
+                    'updated_at' => current_time('mysql', 1) // Use GMT time
+                ),
+                array('%d', '%s', '%s', '%s')
+            );
         }
 
+        if (false === $result) {
+            error_log('DB FAILED. Unable to insert/update cart data for session-specific user.');
+        } else {
+            error_log('DB SUCCESS. Cart data inserted/updated for session-specific user.');
+        }
 
         // Prevent WooCommerce from adding the product to the default session cart
         if (!defined('DOING_AJAX') || !DOING_AJAX) {
             wp_redirect(wc_get_cart_url());
             exit;
         }
-    }else{
+    } else {
         error_log('NOT SESSION SPECIFIC USER');
     }
 }
