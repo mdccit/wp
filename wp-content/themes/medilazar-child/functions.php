@@ -979,24 +979,30 @@ function custom_handle_add_to_cart( $cart_item_key, $product_id, $quantity, $var
 
 // Implement similar hooks for cart item removal, cart updates, etc.
 
-add_filter('woocommerce_get_cart_contents', 'custom_get_cart_contents');
-function custom_get_cart_contents($cart_contents) {
+function custom_filter_cart_contents() {
     if (is_session_specific_user()) {
-        global $wpdb;
+        global $woocommerce, $wpdb;
         $session_key = get_session_key_from_cookie();
 
-        // Query the cart data from wp_cm_cart_data table
         $session_id = get_session_id_by_key($session_key);
         $table_name = $wpdb->prefix . 'cm_cart_data';
-        $cart_data = $wpdb->get_var($wpdb->prepare("SELECT cart_data FROM $table_name WHERE session_id = %d", $session_id));
+        $session_cart_data_serialized = $wpdb->get_var($wpdb->prepare("SELECT cart_data FROM $table_name WHERE session_id = %d", $session_id));
 
-        if (!empty($cart_data)) {
-            // Replace WooCommerce cart contents with session-specific cart data
-            $cart_contents = unserialize($cart_data);
+        if (!empty($session_cart_data_serialized)) {
+            $session_cart_data = unserialize($session_cart_data_serialized);
+            $session_cart_product_ids = array_keys($session_cart_data);
+
+            foreach ($woocommerce->cart->get_cart() as $cart_item_key => $cart_item) {
+                // Check if the current cart item is in the session cart data
+                if (!in_array($cart_item['product_id'], $session_cart_product_ids)) {
+                    // Remove the item from the cart if it's not present in the session-specific cart data
+                    $woocommerce->cart->remove_cart_item($cart_item_key);
+                }
+            }
         }
     }
-    return $cart_contents;
 }
+add_action('woocommerce_before_cart', 'custom_filter_cart_contents');
 
 
 add_action('woocommerce_checkout_create_order', 'custom_checkout_create_order', 10, 2);
