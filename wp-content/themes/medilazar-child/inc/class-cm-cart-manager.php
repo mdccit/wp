@@ -9,9 +9,11 @@ class Cart_Manager {
     public function __construct($session_manager) {
         $this->session_manager = $session_manager;
         add_action('woocommerce_loaded', array($this, 'initialize_cart_handling'));
-        add_action('woocommerce_before_cart', array($this, 'cm_filter_cart_contents'));
+        add_action('woocommerce_before_cart', 'load_cart_data_for_session_specific_user');
+        // add_action('woocommerce_before_cart', array($this, 'cm_filter_cart_contents'));
         add_action('woocommerce_add_to_cart', array($this, 'cm_handle_add_to_cart'), 10, 6);     
         add_action('woocommerce_checkout_create_order', array($this, 'checkout_create_order'), 10, 2);
+        
      
     }
 
@@ -42,9 +44,9 @@ class Cart_Manager {
             if (!$session_id) {
                 // If no session_id is found, possibly create a new session or handle the error
                 return; // Exit the function or handle accordingly
-            }
-    
-            // Serialize the current cart data
+            }else{
+
+                 // Serialize the current cart data
             $cart_data = serialize($woocommerce->cart->get_cart());
     
             // Check if a record already exists for the given session_id
@@ -91,6 +93,9 @@ class Cart_Manager {
                 wp_redirect(wc_get_cart_url());
                 exit;
             }
+            }
+    
+           
         } else {
             error_log('NOT SESSION SPECIFIC USER');
         }
@@ -133,24 +138,59 @@ class Cart_Manager {
                 $table_name = $wpdb->prefix . 'cm_cart_data';
                 $session_cart_data_serialized = $wpdb->get_var($wpdb->prepare("SELECT cart_data FROM $table_name WHERE session_id = %d", $session_id));
     
-                if (!empty($session_cart_data_serialized)) {
-                    error_log("Found serialized cart data, repopulating cart");
-                    $woocommerce->cart->empty_cart(); // Consider the implications of clearing the cart here
-                    
-                    $session_cart_data = unserialize($session_cart_data_serialized);
-                    foreach ($session_cart_data as $item_key => $item_value) {
-                        error_log('Adding to Cart.....');
-                        $woocommerce->cart->add_to_cart($item_key, $item_value['quantity']);
+                if(is_serialized($session_cart_data_serialized)){
+
+                    if (!empty($session_cart_data_serialized)) {
+                        error_log("Found serialized cart data, repopulating cart");
+                        $woocommerce->cart->empty_cart(); // Consider the implications of clearing the cart here
                         
-                        error_log('Added! Item  : ' .$item_key);
+                        $session_cart_data = unserialize($session_cart_data_serialized);
+                        foreach ($session_cart_data as $item_key => $item_value) {
+                            error_log('Adding to Cart.....');
+                            $woocommerce->cart->add_to_cart($item_key, $item_value['quantity']);
+                            
+                            error_log('Added! Item  : ' .$item_key);
+                        }
+                    } else {
+                        error_log("No cart data found for session ID: " . $session_id);
                     }
-                } else {
-                    error_log("No cart data found for session ID: " . $session_id);
+                }else{
+                    error_log(" not serialized ");
                 }
+               
             }   
         }
     }
     
+
+    function load_cart_data_for_session_specific_user() {
+        global $woocommerce, $wpdb,$session_manager;       
+        $session_id = $session_manager->get_session_id_from_cookie();
+    
+        if ($session_id) {
+            $table_name = $wpdb->prefix . 'cm_cart_data';
+            $cart_data_serialized = $wpdb->get_var($wpdb->prepare(
+                "SELECT cart_data FROM $table_name WHERE session_id = %d",
+                $session_id
+            ));
+    
+            if ($cart_data_serialized) {
+                $cart_data = unserialize($cart_data_serialized);
+                if (is_array($cart_data)) {
+                    $woocommerce->cart->empty_cart(true);
+                    foreach ($cart_data as $cart_item) {
+                        $woocommerce->cart->add_to_cart(
+                            $cart_item['product_id'],
+                            $cart_item['quantity'],
+                            $cart_item['variation_id'],
+                            $cart_item['variation'],
+                            $cart_item['cart_item_data']
+                        );
+                    }
+                }
+            }
+        }
+    }
     
     
 }

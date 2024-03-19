@@ -186,4 +186,13 @@ function get_session_id_by_key($session_key) {
     return $session_id;
 }
 
+public function get_session_id_from_cookie() {
+    if (!empty($_COOKIE['cm_session_key'])) {
+        $session_key = sanitize_text_field($_COOKIE['cm_session_key']);
+        // Assume function to validate session key and return session ID
+        return $this->get_session_id_by_key($session_key);
+    }
+    return false;
+}
+
 }
