@@ -1,9 +1,13 @@
 <?php
 require_once get_stylesheet_directory() . '/inc/class-cm-session-manager.php';
 require_once get_stylesheet_directory() . '/inc/class-cm-cart-manager.php';
-$session_manager = new \CM\Session_Manager();
-$cart_manager = new \CM\Session_Manager();
 
+
+$session_manager = new \CM\Session_Manager();
+$cart_manager = new \CM\Cart_Manager($session_manager);
+
+
+$session_manager->start_session();
 /**
  * Enqueue script and styles for child theme
  */
@@ -693,6 +697,7 @@ function is_session_specific_user() {
     global $session_manager;
     $decryptedSessionKey = $session_manager->getAndDecryptSessionKeyFromCookie();
 
+    error_log(' SESSION KEY :'. $decryptedSessionKey);
 
     if (isset($_COOKIE['cm_session_key']) && !empty($_COOKIE['cm_session_key'])) {
        

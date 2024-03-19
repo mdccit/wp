@@ -19,6 +19,8 @@ class Cart_Manager {
     }
 
     function cm_handle_add_to_cart($cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data) {
+
+        error_log('cm_handle_add_to_cart called for product ID: ' . $product_id);
         if (is_session_specific_user()) {
             global $woocommerce, $wpdb;
             $session_key = $this->session_manager->get_session_key_from_cookie(); // This function retrieves and validates the session key

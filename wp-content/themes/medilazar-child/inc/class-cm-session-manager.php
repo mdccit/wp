@@ -29,6 +29,8 @@ class Session_Manager {
 
         $decryptedSessionKey = openssl_decrypt($encryptedSessionKey, 'aes-256-cbc', ENCRYPTION_KEY, 0, $iv);
 
+        error_log('Session Key : '.$decryptedSessionKey);
+
         return $decryptedSessionKey !== false ? $decryptedSessionKey : false;
     }
 
@@ -62,7 +64,6 @@ class Session_Manager {
 
         // Execute the query and get the result
         $expires_at = $wpdb->get_var($query);
-        error_log('Sessions expired Ok.');
 
         return $expires_at;
     }
@@ -86,10 +87,12 @@ class Session_Manager {
         ));
     
         if (null !== $session) {
+            error_log(" Valid Session! ");
             // Session is valid
             return $session->user_id;
         }
     
+        error_log("Warning Valid Session! ");
         // Invalid session
         return false;
     }
@@ -110,7 +113,7 @@ class Session_Manager {
         $decryptedSessionKey = openssl_decrypt($encryptedSessionKey, 'aes-256-cbc', ENCRYPTION_KEY, 0, $iv);
     
         if ($decryptedSessionKey === false) {
-            throw new Exception('Decryption failed');
+         error_log('Decryption failed');
         }
     
         return $decryptedSessionKey;
@@ -133,9 +136,11 @@ class Session_Manager {
         ));
     
         if (null !== $session) {
+            error_log('Valid Sessoin');
             // Session is valid
             return $session->user_id;
         }else{
+            error_log(' InvalidValid Sessoin : '.$sessionKey);
             return false;
         }
     }
