@@ -115,35 +115,38 @@ class Cart_Manager {
 
 
     function cm_filter_cart_contents() {
-
-        error_log(" getting customer cart contents ");
+        error_log("Getting customer cart contents");
         if (is_session_specific_user()) {
             global $woocommerce, $wpdb;
             $session_key = $this->session_manager->get_session_key_from_cookie();
+            error_log("Session key: " . $session_key);
+    
             $session_id = $this->session_manager->get_session_id_by_key($session_key);
-
-            error_log(" session ID get cart : ".    $session_id);
+            error_log("Session ID for cart: " . $session_id);
     
             if (!$session_id) {
-                //  $woocommerce->cart->empty_cart();
+                error_log("No session ID found, clearing cart");
+               // $woocommerce->cart->empty_cart();
                 return;
-            }else{
+            } else {
                 $table_name = $wpdb->prefix . 'cm_cart_data';
                 $session_cart_data_serialized = $wpdb->get_var($wpdb->prepare("SELECT cart_data FROM $table_name WHERE session_id = %d", $session_id));
-        
+    
                 if (!empty($session_cart_data_serialized)) {
-                    $woocommerce->cart->empty_cart(); // Clear the cart to repopulate it with session-specific items
-                    $session_cart_data = unserialize($session_cart_data_serialized);
+                    error_log("Found serialized cart data, repopulating cart");
+                    $woocommerce->cart->empty_cart(); // Consider the implications of clearing the cart here
                     
-                    // Repopulate the WooCommerce cart with the session-specific cart items
+                    $session_cart_data = unserialize($session_cart_data_serialized);
                     foreach ($session_cart_data as $item_key => $item_value) {
                         $woocommerce->cart->add_to_cart($item_key, $item_value['quantity']);
                     }
+                } else {
+                    error_log("No cart data found for session ID: " . $session_id);
                 }
             }   
-          
         }
     }
+    
     
     
 }
