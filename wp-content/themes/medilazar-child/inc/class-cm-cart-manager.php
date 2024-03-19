@@ -125,23 +125,23 @@ class Cart_Manager {
             error_log(" session ID get cart : ".    $session_id);
     
             if (!$session_id) {
-                // No session ID found, so clear the cart or handle accordingly.
-                $woocommerce->cart->empty_cart();
+                 $woocommerce->cart->empty_cart();
                 return;
-            }
-    
-            $table_name = $wpdb->prefix . 'cm_cart_data';
-            $session_cart_data_serialized = $wpdb->get_var($wpdb->prepare("SELECT cart_data FROM $table_name WHERE session_id = %d", $session_id));
-    
-            if (!empty($session_cart_data_serialized)) {
-                $woocommerce->cart->empty_cart(); // Clear the cart to repopulate it with session-specific items
-                $session_cart_data = unserialize($session_cart_data_serialized);
-                
-                // Repopulate the WooCommerce cart with the session-specific cart items
-                foreach ($session_cart_data as $item_key => $item_value) {
-                    $woocommerce->cart->add_to_cart($item_key, $item_value['quantity']);
+            }else{
+                $table_name = $wpdb->prefix . 'cm_cart_data';
+                $session_cart_data_serialized = $wpdb->get_var($wpdb->prepare("SELECT cart_data FROM $table_name WHERE session_id = %d", $session_id));
+        
+                if (!empty($session_cart_data_serialized)) {
+                    $woocommerce->cart->empty_cart(); // Clear the cart to repopulate it with session-specific items
+                    $session_cart_data = unserialize($session_cart_data_serialized);
+                    
+                    // Repopulate the WooCommerce cart with the session-specific cart items
+                    foreach ($session_cart_data as $item_key => $item_value) {
+                        $woocommerce->cart->add_to_cart($item_key, $item_value['quantity']);
+                    }
                 }
-            }
+            }   
+          
         }
     }
     
