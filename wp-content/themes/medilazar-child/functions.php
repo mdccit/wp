@@ -602,18 +602,14 @@ function cm_login_user_with_url_session_key() {
         return;
     }
 
-    global $session_manager;
-	$session_key = sanitize_text_field($_GET['sessionKey']);
-	$session_email = sanitize_email($_GET['userEmail']);
+    global $session_manager, $wpdb;
+    $session_key = sanitize_text_field($_GET['sessionKey']);
+    $session_email = sanitize_email($_GET['userEmail']);
     $user_id = $session_manager->validate_session_key($session_key, $session_email);
 
     if ($user_id) {
-
-
-        //expire_sessions_by_email($session_email); // expire the current active sessions for the user
-
         // Generate a dynamic IV for each encryption
-         $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length('aes-256-cbc'));
+        $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length('aes-256-cbc'));
 
         // Encrypt the session key with dynamic IV
         $encrypted_session_key = openssl_encrypt($session_key, 'aes-256-cbc', ENCRYPTION_KEY, 0, $iv);
@@ -624,7 +620,6 @@ function cm_login_user_with_url_session_key() {
 
         // Prepend the IV to the encrypted session key and base64-encode the entire string
         $encrypted_session_key_with_iv = base64_encode($iv . $encrypted_session_key);
-
 
         $expires_at = $session_manager->get_cm_session_expires_at($session_key);
         $expires_at_timestamp = strtotime($expires_at);
@@ -637,22 +632,35 @@ function cm_login_user_with_url_session_key() {
             wp_set_auth_cookie($user_id);
 
             // Set the session cookie
-            $session_manager->set_cm_session_cookie($encrypted_session_key_with_iv,$expiration_period);
+            $session_manager->set_cm_session_cookie($encrypted_session_key_with_iv, $expiration_period);
+            
+            // Check if the session ID has been used to add items in wp_cm_cart_data
+            $session_id = $session_manager->get_session_id_by_key($session_key); // Ensure this function exists and correctly retrieves the session ID
+            $table_name = $wpdb->prefix . 'cm_cart_data';
+            $cart_data_exists = $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM $table_name WHERE session_id = %d",
+                $session_id
+            ));
+            
+            // If no cart data exists for this session ID, empty the cart
+            if ($cart_data_exists == 0) {
+                WC()->cart->empty_cart();
+            }
+
             // Redirect to the homepage on Login Success
             wp_redirect(home_url());
             exit;
-        }else{
+        } else {
             wp_logout();
             // Redirect to the WordPress main URL
             wp_redirect(home_url());
             exit;
-        }           
-       
+        }
     } else {
-		wp_logout();
-		// Redirect to the WordPress main URL
-		wp_redirect(home_url());
-		exit;
+        wp_logout();
+        // Redirect to the WordPress main URL
+        wp_redirect(home_url());
+        exit;
     }
 }
 
@@ -756,9 +764,6 @@ function create_cm_cart_data_table() {
 // create or update cart_data table after theme loads
 add_action('init', 'create_cm_cart_data_table');
 
-
-
-add_action('woocommerce_add_to_cart', 'custom_handle_add_to_cart', 10, 6);
 
 // Implement similar hooks for cart item removal, cart updates, etc.
 

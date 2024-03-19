@@ -8,7 +8,7 @@ class Cart_Manager {
     private $session_manager;
     public function __construct($session_manager) {
         $this->session_manager = $session_manager;
-        add_action('woocommerce_add_to_cart', array($this, 'handle_add_to_cart'), 10, 6);
+        add_action('woocommerce_add_to_cart', array($this, 'cm_handle_add_to_cart'), 10, 6);
         add_action('woocommerce_before_cart', array($this, 'filter_cart_contents'));
         add_action('woocommerce_checkout_create_order', array($this, 'checkout_create_order'), 10, 2);
     }
@@ -18,7 +18,7 @@ class Cart_Manager {
         error_log("Session started within CM namespace");
     }
 
-    function custom_handle_add_to_cart($cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data) {
+    function cm_handle_add_to_cart($cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data) {
         if (is_session_specific_user()) {
             global $woocommerce, $wpdb;
             $session_key = $this->session_manager->get_session_key_from_cookie(); // This function retrieves and validates the session key
@@ -53,9 +53,9 @@ class Cart_Manager {
                         'cart_data' => $cart_data,
                         'updated_at' => current_time('mysql', 1) // Use GMT time
                     ),
-                    array('session_id' => $session_id), // Where clause
-                    array('%s', '%s'), // Value formats
-                    array('%d') // Where formats
+                    array('session_id' => $session_id), 
+                    array('%s', '%s'),
+                    array('%d') 
                 );
             } else {
                 // If no record exists, insert a new one
