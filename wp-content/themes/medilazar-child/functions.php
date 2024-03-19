@@ -8,6 +8,7 @@ $cart_manager = new \CM\Cart_Manager($session_manager);
 
 
 $session_manager->start_session();
+$cart_manager->initialize_cart_handling();
 /**
  * Enqueue script and styles for child theme
  */

@@ -9,9 +9,10 @@ class Cart_Manager {
     public function __construct($session_manager) {
         $this->session_manager = $session_manager;
         add_action('woocommerce_loaded', array($this, 'initialize_cart_handling'));
-        add_action('woocommerce_add_to_cart', array($this, 'cm_handle_add_to_cart'), 10, 6);
         add_action('woocommerce_before_cart', array($this, 'filter_cart_contents'));
+        add_action('woocommerce_add_to_cart', array($this, 'cm_handle_add_to_cart'), 10, 6);     
         add_action('woocommerce_checkout_create_order', array($this, 'checkout_create_order'), 10, 2);
+     
     }
 
     public function initialize_cart_handling() {
