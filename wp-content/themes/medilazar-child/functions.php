@@ -8,7 +8,7 @@ $cart_manager = new \CM\Cart_Manager($session_manager);
 
 
 $session_manager->start_session();
-// $cart_manager->initialize_cart_handling();
+$cart_manager->initialize_cart_handling();
 /**
  * Enqueue script and styles for child theme
  */
@@ -782,3 +782,10 @@ function clear_cm_session_key_cookie() {
         setcookie('cm_session_key', '', time() - 3600, '/');
     }
 }
+
+
+add_action('wp_footer', function() {
+    if (is_cart()) {
+        error_log(print_r(WC()->cart->get_cart(), true));
+    }
+});

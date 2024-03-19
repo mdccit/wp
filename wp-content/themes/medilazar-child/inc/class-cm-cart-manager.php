@@ -82,6 +82,7 @@ class Cart_Manager {
             if (false === $result) {
                 error_log('DB FAILED. Unable to insert/update cart data for session-specific user.');
             } else {
+                WC()->cart->calculate_totals();
                 error_log('DB SUCCESS. Cart data inserted/updated for session-specific user.');
             }
     
@@ -95,7 +96,7 @@ class Cart_Manager {
         }
     }
     
-    
+
 
     function cm_checkout_create_order($order, $data) {
         global $session_manager;
@@ -119,7 +120,7 @@ class Cart_Manager {
         if (is_session_specific_user()) {
             global $woocommerce, $wpdb;
             $session_key = $this->session_manager->get_session_key_from_cookie();
-            error_log("Session key: " . $session_key);
+            error_log("Session key for Cart: " . $session_key);
     
             $session_id = $this->session_manager->get_session_id_by_key($session_key);
             error_log("Session ID for cart: " . $session_id);
@@ -138,7 +139,10 @@ class Cart_Manager {
                     
                     $session_cart_data = unserialize($session_cart_data_serialized);
                     foreach ($session_cart_data as $item_key => $item_value) {
+                        error_log('Adding to Cart.....');
                         $woocommerce->cart->add_to_cart($item_key, $item_value['quantity']);
+                        
+                        error_log('Added! Item  : ' .$item_key);
                     }
                 } else {
                     error_log("No cart data found for session ID: " . $session_id);
