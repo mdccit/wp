@@ -8,9 +8,14 @@ class Cart_Manager {
     private $session_manager;
     public function __construct($session_manager) {
         $this->session_manager = $session_manager;
+        add_action('woocommerce_loaded', array($this, 'initialize_cart_handling'));
         add_action('woocommerce_add_to_cart', array($this, 'cm_handle_add_to_cart'), 10, 6);
         add_action('woocommerce_before_cart', array($this, 'filter_cart_contents'));
         add_action('woocommerce_checkout_create_order', array($this, 'checkout_create_order'), 10, 2);
+    }
+
+    public function initialize_cart_handling() {
+        add_action('woocommerce_before_calculate_totals', array($this, 'cm_filter_cart_contents'));
     }
 
     public function start_session() {
@@ -91,7 +96,7 @@ class Cart_Manager {
     
     
 
-    function custom_checkout_create_order($order, $data) {
+    function cm_checkout_create_order($order, $data) {
         global $session_manager;
         if (is_session_specific_user()) {
             global $wpdb;
@@ -108,11 +113,15 @@ class Cart_Manager {
     }
 
 
-    function custom_filter_cart_contents() {
+    function cm_filter_cart_contents() {
+
+        error_log(" getting customer cart contents ");
         if (is_session_specific_user()) {
             global $woocommerce, $wpdb;
             $session_key = $this->session_manager->get_session_key_from_cookie();
             $session_id = $this->session_manager->get_session_id_by_key($session_key);
+
+            error_log(" session ID get cart : ".    $session_id);
     
             if (!$session_id) {
                 // No session ID found, so clear the cart or handle accordingly.
