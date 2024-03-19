@@ -34,6 +34,28 @@ class Session_Manager {
         return $decryptedSessionKey !== false ? $decryptedSessionKey : false;
     }
 
+
+    function is_session_specific_user() {
+
+        global $session_manager;
+        $decryptedSessionKey = $session_manager->getAndDecryptSessionKeyFromCookie();
+    
+        error_log(' SESSION KEY :'. $decryptedSessionKey);
+    
+        if (isset($_COOKIE['cm_session_key']) && !empty($_COOKIE['cm_session_key'])) {
+           
+            if ($session_manager->validate_session_key_format($decryptedSessionKey)) {
+                if ($decryptedSessionKey && $session_manager->validateSessionCookieKey($decryptedSessionKey)) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        }
+        return false; // This is a normal user
+    }
+    
+
     public function expire_sessions_by_email($session_email) {
         global $wpdb;
         $table_name = $wpdb->prefix . 'cm_sessions';
@@ -194,5 +216,7 @@ public function get_session_id_from_cookie() {
     }
     return false;
 }
+
+
 
 }

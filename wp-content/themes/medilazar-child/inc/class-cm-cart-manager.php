@@ -28,8 +28,10 @@ class Cart_Manager {
 
     function cm_handle_add_to_cart($cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data) {
 
+        global $session_manager;
+        
         error_log('cm_handle_add_to_cart called for product ID: ' . $product_id);
-        if (is_session_specific_user()) {
+        if ($session_manager->is_session_specific_user()) {
             global $woocommerce, $wpdb;
             $session_key = $this->session_manager->get_session_key_from_cookie(); // This function retrieves and validates the session key
     
@@ -105,7 +107,7 @@ class Cart_Manager {
 
     function cm_checkout_create_order($order, $data) {
         global $session_manager;
-        if (is_session_specific_user()) {
+        if ($session_manager->is_session_specific_user()) {
             global $wpdb;
             $session_key = $session_manager->get_session_key_from_cookie();
             $session_id = $session_manager->get_session_id_by_key($session_key);
@@ -121,8 +123,9 @@ class Cart_Manager {
 
 
     function cm_filter_cart_contents() {
+        global $session_manager;
         error_log("Getting customer cart contents");
-        if (is_session_specific_user()) {
+        if ($session_manager->is_session_specific_user()) {
             global $woocommerce, $wpdb;
             $session_key = $this->session_manager->get_session_key_from_cookie();
             error_log("Session key for Cart: " . $session_key);
@@ -158,7 +161,10 @@ class Cart_Manager {
                     error_log(" not serialized ");
                 }
                
-            }   
+            }  
+
+        }else{
+            error_log(" Not a Session Specific user , cant load cart");
         }
     }
     
