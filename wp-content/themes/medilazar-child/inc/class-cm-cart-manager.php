@@ -29,7 +29,7 @@ class Cart_Manager {
     function cm_handle_add_to_cart($cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data) {
 
         global $session_manager;
-        
+
         error_log('cm_handle_add_to_cart called for product ID: ' . $product_id);
         if ($session_manager->is_session_specific_user()) {
             global $woocommerce, $wpdb;
@@ -173,6 +173,7 @@ class Cart_Manager {
         global $woocommerce, $wpdb,$session_manager;       
         $session_id = $session_manager->get_session_id_from_cookie();
     
+        error_log(" load_cart_data_for_session_specific_user  session id : " . $session_id);
         if ($session_id) {
             $table_name = $wpdb->prefix . 'cm_cart_data';
             $cart_data_serialized = $wpdb->get_var($wpdb->prepare(
@@ -195,6 +196,8 @@ class Cart_Manager {
                     }
                 }
             }
+        }else{
+            error_log(" load_cart_data_for_session_specific_user :  No session id found ");
         }
     }
     
