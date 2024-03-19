@@ -9,7 +9,7 @@ class Cart_Manager {
     public function __construct($session_manager) {
         $this->session_manager = $session_manager;
         add_action('woocommerce_loaded', array($this, 'initialize_cart_handling'));
-        add_action('woocommerce_before_cart', 'load_cart_data_for_session_specific_user');
+        add_action('woocommerce_before_cart', array($this, 'load_cart_data_for_session_specific_user'));
         // add_action('woocommerce_before_cart', array($this, 'cm_filter_cart_contents'));
         add_action('woocommerce_add_to_cart', array($this, 'cm_handle_add_to_cart'), 10, 6);     
         add_action('woocommerce_checkout_create_order', array($this, 'checkout_create_order'), 10, 2);
@@ -169,7 +169,7 @@ class Cart_Manager {
     }
     
 
-    function load_cart_data_for_session_specific_user() {
+    public function load_cart_data_for_session_specific_user() {
         global $woocommerce, $wpdb,$session_manager;       
         $session_id = $session_manager->get_session_id_from_cookie();
     
