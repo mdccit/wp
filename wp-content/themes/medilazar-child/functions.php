@@ -637,25 +637,27 @@ function cm_login_user_with_url_session_key() {
             wp_set_auth_cookie($user_id);
 
             // Set the session cookie
-            $session_manager->set_cm_session_cookie($encrypted_session_key_with_iv, $expiration_period);
+            $set_cookie = $session_manager->set_cm_session_cookie($encrypted_session_key_with_iv, $expiration_period);
             
             // Check if the session ID has been used to add items in wp_cm_cart_data
-            $session_id = $session_manager->get_current_session_id(); // Ensure this function exists and correctly retrieves the session ID
-            $table_name = $wpdb->prefix . 'cm_cart_data';
-            $cart_data_exists = $wpdb->get_var($wpdb->prepare(
-                "SELECT COUNT(*) FROM $table_name WHERE session_id = %d",
-                $session_id
-            ));
-            
-            // If no cart data exists for this session ID, empty the cart
-            if ($cart_data_exists == 0) {
-                error_log(" Cart Data Clear : ". $session_id ."");
-                empty_cart_for_session($session_id);
-            }
+            if($set_cookie === true) {
+                $session_id = $session_manager->get_current_session_id(); // Ensure this function exists and correctly retrieves the session ID
+                $table_name = $wpdb->prefix . 'cm_cart_data';
+                $cart_data_exists = $wpdb->get_var($wpdb->prepare(
+                    "SELECT COUNT(*) FROM $table_name WHERE session_id = %d",
+                    $session_id
+                ));
+                
+                // If no cart data exists for this session ID, empty the cart
+                if ($cart_data_exists == 0) {
+                    error_log(" Cart Data Clear : ". $session_id ."");
+                    empty_cart_for_session($session_id);
+                }
 
-            // Redirect to the homepage on Login Success
-            wp_redirect(home_url());
-            exit;
+                // Redirect to the homepage on Login Success
+                wp_redirect(home_url());
+                exit;
+            }
         } else {
             wp_logout();
             // Redirect to the WordPress main URL
@@ -685,6 +687,7 @@ add_action('init', 'cm_login_user_with_url_session_key');
     if ($current_session_id == $session_id) {
         // Proceed to empty the cart only if the session matches
         WC()->cart->empty_cart();
+        error_log(' Cart Emptied for Session ID'. $current_session_id .'');
     } else {
         // Handle cases where the session does not match
         // This could involve logging or other business logic as required
@@ -692,6 +695,15 @@ add_action('init', 'cm_login_user_with_url_session_key');
     }
 }
 
+function load_user_cart_on_login( $user_login, $user ) {
+    $session_key = get_user_meta($user->ID, 'cm_session_key', true);
+    if ( ! empty( $session_key ) ) {
+         error_log(' WP LOGIN :  SESSION KEY'. $session_key .'');
+    }else{
+        error_log(' WP LOGIN :  ERROR ');
+    }
+}
+add_action('wp_login', 'load_user_cart_on_login', 10, 2);
 
 
 /**

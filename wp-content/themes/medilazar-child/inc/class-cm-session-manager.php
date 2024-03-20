@@ -190,6 +190,8 @@ function set_cm_session_cookie($encrypted_session_key_with_iv, $expiration_perio
         'httponly' => $httponly,
         'samesite' => $samesite
     ]);
+
+    return true;
 }
 
 
