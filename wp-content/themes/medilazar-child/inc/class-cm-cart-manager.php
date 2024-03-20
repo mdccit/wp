@@ -10,9 +10,9 @@ class Cart_Manager {
         $this->session_manager = $session_manager;
         // add_action('woocommerce_loaded', array($this, 'initialize_cart_handling'));
         // add_action('woocommerce_load_cart_from_session', array($this, 'load_cart_for_session_user'));
-        // add_action('woocommerce_before_cart', array($this, 'load_cart_data_for_session_specific_user'));
+        add_action('woocommerce_before_cart', array($this, 'load_cart_data_for_session_specific_user'));
         // // add_action('woocommerce_before_cart', array($this, 'cm_filter_cart_contents'));
-        // add_action('woocommerce_add_to_cart', array($this, 'cm_handle_add_to_cart'), 10, 6);   
+        add_action('woocommerce_add_to_cart', array($this, 'cm_handle_add_to_cart'), 10, 6);   
         // add_filter('woocommerce_add_to_cart_validation', array($this,'cm_custom_add_to_cart'), 10, 6);  
         // add_action('woocommerce_checkout_create_order', array($this, 'checkout_create_order'), 10, 2);
         // add_action('wp_logout', 'handle_user_logout');
