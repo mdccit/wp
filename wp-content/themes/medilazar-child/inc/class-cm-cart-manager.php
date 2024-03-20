@@ -9,6 +9,7 @@ class Cart_Manager {
     public function __construct($session_manager) {
         $this->session_manager = $session_manager;
         add_action('woocommerce_loaded', array($this, 'initialize_cart_handling'));
+        add_action('woocommerce_load_cart_from_session', array($this, 'load_cart_for_session_user'));
         add_action('woocommerce_before_cart', array($this, 'load_cart_data_for_session_specific_user'));
         // add_action('woocommerce_before_cart', array($this, 'cm_filter_cart_contents'));
         add_action('woocommerce_add_to_cart', array($this, 'cm_handle_add_to_cart'), 10, 6);   
@@ -36,6 +37,58 @@ class Cart_Manager {
         $session_id = $session_manager->get_session_id_from_cookie();
      
     }
+
+    public function load_cart_for_session_user() {
+        if ($this->session_manager->is_session_specific_user()) {
+            $session_id = $this->session_manager->get_session_id_from_cookie();
+            $cart_data = $this->get_cart_data_for_session($session_id);
+            if ($cart_data) {
+                // Logic to populate WooCommerce's cart with $cart_data
+                $this->populate_woocommerce_cart($cart_data);
+            }
+        }
+    }
+
+    protected function populate_woocommerce_cart($cart_data) {
+        if (!is_array($cart_data) || empty($cart_data)) {
+            return; // Exit if there is no cart data to process
+        }
+    
+        WC()->cart->empty_cart(); // Optionally, start by emptying the current cart
+    
+        foreach ($cart_data as $cart_item) {
+            // Ensure the cart item array includes at least a product_id and quantity
+            if (!isset($cart_item['product_id'], $cart_item['quantity'])) {
+                continue; // Skip improperly formatted cart items
+            }
+    
+            $product_id = $cart_item['product_id'];
+            $quantity = $cart_item['quantity'];
+            $variation_id = isset($cart_item['variation_id']) ? $cart_item['variation_id'] : '';
+            $variations = isset($cart_item['variations']) ? $cart_item['variations'] : array();
+            $cart_item_data = isset($cart_item['cart_item_data']) ? $cart_item['cart_item_data'] : array();
+    
+            // Add the item to WooCommerce's cart
+            WC()->cart->add_to_cart($product_id, $quantity, $variation_id, $variations, $cart_item_data);
+        }
+    
+        // Ensure cart totals are recalculated after all items are added
+        WC()->cart->calculate_totals();
+    }
+    
+    protected function get_cart_data_for_session($session_id) {
+        global $wpdb;
+        // Assuming $wpdb->prefix . 'cm_cart_data' is your custom table for storing cart data
+        $cart_data_serialized = $wpdb->get_var($wpdb->prepare(
+            "SELECT cart_data FROM {$wpdb->prefix}cm_cart_data WHERE session_id = %d",
+            $session_id
+        ));
+        if ($cart_data_serialized) {
+            return unserialize($cart_data_serialized);
+        }
+        return false;
+    }
+
 
   
     public function cm_validation_add_to_cart($valid, $product_id, $quantity, $variation_id = '', $variations= '', $cart_item_data = array()) {
