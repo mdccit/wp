@@ -7,8 +7,8 @@ $session_manager = new \CM\Session_Manager();
 $cart_manager = new \CM\Cart_Manager($session_manager);
 
 
-$session_manager->start_session();
-$cart_manager->load_cm_session_cart();
+// $session_manager->start_session();
+// $cart_manager->load_cm_session_cart();
 
 
 /**

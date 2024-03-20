@@ -26,68 +26,6 @@ class Cart_Manager {
         add_action('woocommerce_before_calculate_totals', array($this, 'cm_filter_cart_contents'));
     }
 
-    public function load_cm_session_cart() {
-        add_action('woocommerce_load_cart_from_session', array($this, 'load_cart_from_session'));
-    }
-
-
-    public function load_cart_from_session() {
-        global $session_manager, $wpdb;
-        $session_id = $session_manager->get_session_id_from_cookie();
-    
-        if ($session_id) {
-            $cart_data_serialized = $wpdb->get_var($wpdb->prepare(
-                "SELECT cart_data FROM {$wpdb->prefix}cm_cart_data WHERE session_id = %d",
-                $session_id
-            ));
-
-            $cart_data = $this->get_cart_data_for_session($session_id);
-        
-            if (!empty($cart_data)) {
-                // Clear the current cart to ensure it's empty before loading new items
-                WC()->cart->empty_cart();
-    
-            if (!empty($cart_data_serialized)) {
-                $cart_data = unserialize($cart_data_serialized);
-                WC()->cart->set_cart_contents($cart_data);
-            }
-        }
-        }
-    }
-
-    public function get_cart_data_for_session($session_id) {
-        global $wpdb;
-    
-        // The table where session-specific cart data is stored
-        $table_name = $wpdb->prefix . 'cm_cart_data';
-    
-        // SQL to retrieve cart data for the given session_id
-        $sql = $wpdb->prepare(
-            "SELECT cart_data FROM {$table_name} WHERE session_id = %d",
-            $session_id
-        );
-    
-        // Execute the query
-        $cart_data_serialized = $wpdb->get_var($sql);
-    
-        // Check if cart data exists for the session
-        if (!empty($cart_data_serialized)) {
-            // Assuming cart data is stored in a serialized format
-            $cart_data = maybe_unserialize($cart_data_serialized);
-    
-            // Ensure that $cart_data is an array and has the expected structure
-            if (is_array($cart_data) && isset($cart_data[0]['product_id'])) {
-                // $cart_data is correctly structured and can be returned
-                return $cart_data;
-            }
-        }
-    
-        // Return an empty array if no cart data is found or if there are any issues
-        return [];
-    }
-    
-
-
     
     public function cm_handle_add_to_cart($cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data) {
         global $session_manager, $wpdb, $woocommerce;
@@ -172,18 +110,7 @@ class Cart_Manager {
             error_log('NOT SESSION SPECIFIC USER');
         }
     }
-      
-
-    public function start_session() {
-        // Method logic to start a session
-        error_log("Session started within CM namespace");
-    }
-
-    public function handle_user_logout() {
-        global $session_manager, $wpdb;
-        $session_id = $session_manager->get_session_id_from_cookie();
-     
-    }
+    
 
     public function cm_validation_add_to_cart($valid, $product_id, $quantity, $variation_id = '', $variations= '', $cart_item_data = array()) {
         global $session_manager;
