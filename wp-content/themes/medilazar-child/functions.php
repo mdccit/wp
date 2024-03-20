@@ -696,7 +696,7 @@ add_action('init', 'cm_login_user_with_url_session_key');
     // Check if the current session matches the session we intend to clear
     if ($current_session_id == $session_id) {
         // Proceed to empty the cart only if the session matches
-        WC()->cart->empty_cart();
+       
         error_log(' Cart Emptied for Session ID'. $current_session_id .'');
     } else {
         // Handle cases where the session does not match
@@ -814,8 +814,3 @@ function clear_cm_session_key_cookie() {
 }
 
 
-add_action('wp_footer', function() {
-    if (is_cart()) {
-        error_log(print_r(WC()->cart->get_cart(), true));
-    }
-});
