@@ -12,7 +12,8 @@ class Cart_Manager {
         // add_action('woocommerce_load_cart_from_session', array($this, 'load_cart_for_session_user'));
         add_action('woocommerce_before_cart', array($this, 'load_cart_data_for_session_specific_user'));
         // // add_action('woocommerce_before_cart', array($this, 'cm_filter_cart_contents'));
-        add_action('woocommerce_add_to_cart', array($this, 'cm_handle_add_to_cart'), 10, 6);   
+        add_action('woocommerce_add_to_cart', array($this, 'cm_handle_add_to_cart'), 10, 6);  
+        // add_action('woocommerce_load_cart_from_session', array($this, 'load_cart_from_session')); 
         // add_filter('woocommerce_add_to_cart_validation', array($this,'cm_custom_add_to_cart'), 10, 6);  
         // add_action('woocommerce_checkout_create_order', array($this, 'checkout_create_order'), 10, 2);
         // add_action('wp_logout', 'handle_user_logout');
@@ -24,6 +25,67 @@ class Cart_Manager {
     public function initialize_cart_handling() {
         add_action('woocommerce_before_calculate_totals', array($this, 'cm_filter_cart_contents'));
     }
+
+    public function load_cm_session_cart() {
+        add_action('woocommerce_load_cart_from_session', array($this, 'load_cart_from_session'));
+    }
+
+
+    public function load_cart_from_session() {
+        global $session_manager, $wpdb;
+        $session_id = $session_manager->get_session_id_from_cookie();
+    
+        if ($session_id) {
+            $cart_data_serialized = $wpdb->get_var($wpdb->prepare(
+                "SELECT cart_data FROM {$wpdb->prefix}cm_cart_data WHERE session_id = %d",
+                $session_id
+            ));
+
+            $cart_data = get_cart_data_for_session($session_id);
+        
+            if (!empty($cart_data)) {
+                // Clear the current cart to ensure it's empty before loading new items
+                WC()->cart->empty_cart();
+    
+            if (!empty($cart_data_serialized)) {
+                $cart_data = unserialize($cart_data_serialized);
+                WC()->cart->set_cart_contents($cart_data);
+            }
+        }
+        }
+    }
+
+    public function get_cart_data_for_session($session_id) {
+        global $wpdb;
+    
+        // The table where session-specific cart data is stored
+        $table_name = $wpdb->prefix . 'cm_cart_data';
+    
+        // SQL to retrieve cart data for the given session_id
+        $sql = $wpdb->prepare(
+            "SELECT cart_data FROM {$table_name} WHERE session_id = %d",
+            $session_id
+        );
+    
+        // Execute the query
+        $cart_data_serialized = $wpdb->get_var($sql);
+    
+        // Check if cart data exists for the session
+        if (!empty($cart_data_serialized)) {
+            // Assuming cart data is stored in a serialized format
+            $cart_data = maybe_unserialize($cart_data_serialized);
+    
+            // Ensure that $cart_data is an array and has the expected structure
+            if (is_array($cart_data) && isset($cart_data[0]['product_id'])) {
+                // $cart_data is correctly structured and can be returned
+                return $cart_data;
+            }
+        }
+    
+        // Return an empty array if no cart data is found or if there are any issues
+        return [];
+    }
+    
 
 
     
@@ -146,13 +208,15 @@ class Cart_Manager {
 
         if ($session_manager->is_session_specific_user()) {
             $session_id = $session_manager->get_session_id_from_cookie();
+            $user_id = get_current_user_id();
             error_log(" load_cart_data_for_session_specific_user  session id : " . $session_id);
 
                 if ($session_id) {
                     $table_name = $wpdb->prefix . 'cm_cart_data';
                     $cart_data_serialized = $wpdb->get_var($wpdb->prepare(
-                        "SELECT cart_data FROM $table_name WHERE session_id = %d",
-                        $session_id
+                        "SELECT cart_data FROM $table_name WHERE session_id = %d AND user_id = %d",
+                        $session_id,
+                        $user_id
                     ));
             
                     if ($cart_data_serialized) {

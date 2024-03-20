@@ -8,6 +8,7 @@ $cart_manager = new \CM\Cart_Manager($session_manager);
 
 
 $session_manager->start_session();
+$cart_manager->load_cm_session_cart();
 // $cart_manager->initialize_cart_handling();
 /**
  * Enqueue script and styles for child theme
@@ -702,7 +703,7 @@ add_filter('login_message', 'cm_login_error_message');
 */ ////////////////////////////////////////////
 
 
-define('CM_CART_DATA_TABLE_VERSION', '1.2');
+define('CM_CART_DATA_TABLE_VERSION', '1.3');
 define('CM_CART_DATA_TABLE_VERSION_OPTION', 'cm_cart_data_table_version');
 
 /**
