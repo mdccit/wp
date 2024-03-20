@@ -11,9 +11,13 @@ class Cart_Manager {
         add_action('woocommerce_loaded', array($this, 'initialize_cart_handling'));
         add_action('woocommerce_before_cart', array($this, 'load_cart_data_for_session_specific_user'));
         // add_action('woocommerce_before_cart', array($this, 'cm_filter_cart_contents'));
-        add_action('woocommerce_add_to_cart', array($this, 'cm_handle_add_to_cart'), 10, 6);     
+        add_action('woocommerce_add_to_cart', array($this, 'cm_handle_add_to_cart'), 10, 6);   
+        add_filter('woocommerce_add_to_cart_validation', array($this,'cm_custom_add_to_cart'), 10, 6);  
         add_action('woocommerce_checkout_create_order', array($this, 'checkout_create_order'), 10, 2);
         add_action('wp_logout', 'handle_user_logout');
+        add_action('woocommerce_before_remove_from_cart', array($this,'cm_remove_cart_item'), 10, 2);
+        add_action('woocommerce_cart_updated', array($this,'cm_cart_updated'));
+      
         
      
     }
@@ -32,6 +36,26 @@ class Cart_Manager {
         $session_id = $session_manager->get_session_id_from_cookie();
      
     }
+
+  
+    public function cm_validation_add_to_cart($valid, $product_id, $quantity, $variation_id = '', $variations= '', $cart_item_data = array()) {
+        global $session_manager;
+        if ($session_manager->is_session_specific_user()) {
+            // Custom add to cart logic that stores cart item in custom session-based storage
+            return false; // Return false to prevent the default add to cart behavior
+        }
+        return $valid;
+    }
+
+        
+    public function cm_remove_cart_item($cart_item_key, $cart) {
+        global $session_manager;
+        if ($session_manager->is_session_specific_user()) {
+            // Custom logic to remove the item from custom session-based storage
+        }
+    }
+
+
 
     public function cm_handle_add_to_cart($cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data) {
         global $session_manager, $wpdb, $woocommerce;
