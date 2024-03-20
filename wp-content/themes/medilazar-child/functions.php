@@ -644,6 +644,7 @@ function cm_login_user_with_url_session_key() {
                 $session_id = $session_manager->get_current_session_id(); // Ensure this function exists and correctly retrieves the session ID
                
                 if($session_id) {
+                    global $cart_manager;
                     $table_name = $wpdb->prefix . 'cm_cart_data';
                     $cart_data_exists = $wpdb->get_var($wpdb->prepare(
                         "SELECT COUNT(*) FROM $table_name WHERE session_id = %d",
@@ -654,6 +655,10 @@ function cm_login_user_with_url_session_key() {
                     if ($cart_data_exists == 0) {
                         error_log(" Cart Data Clear : ". $session_id ."");
                         empty_cart_for_session($session_id);
+                    }else{
+                        error_log(" Loading Cart Data on login : ". $session_id ."");
+                        $cart_manager->set_cart_data_for_session_specific_user();
+                        error_log(" Cart Loaded on login : ". $session_id ."");
                     }
 
                     // Redirect to the homepage on Login Success

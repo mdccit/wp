@@ -10,7 +10,7 @@ class Cart_Manager {
         $this->session_manager = $session_manager;
         // add_action('woocommerce_loaded', array($this, 'initialize_cart_handling'));
         // add_action('woocommerce_load_cart_from_session', array($this, 'load_cart_for_session_user'));
-        add_action('woocommerce_before_cart', array($this, 'load_cart_data_for_session_specific_user'));
+        // add_action('woocommerce_before_cart', array($this, 'load_cart_data_for_session_specific_user'));
         // // add_action('woocommerce_before_cart', array($this, 'cm_filter_cart_contents'));
         add_action('woocommerce_add_to_cart', array($this, 'cm_handle_add_to_cart'), 10, 6);  
         // add_action('woocommerce_load_cart_from_session', array($this, 'load_cart_from_session')); 
@@ -112,22 +112,13 @@ class Cart_Manager {
     }
     
 
-    public function cm_validation_add_to_cart($valid, $product_id, $quantity, $variation_id = '', $variations= '', $cart_item_data = array()) {
-        global $session_manager;
-        if ($session_manager->is_session_specific_user()) {
-            // Custom add to cart logic that stores cart item in custom session-based storage
-            return false; // Return false to prevent the default add to cart behavior
-        }
-        return $valid;
-    }
-
-    public function load_cart_data_for_session_specific_user() {
+    public function set_cart_data_for_session_specific_user() {
         global $woocommerce, $wpdb,$session_manager;      
       
         if ($session_manager->is_session_specific_user()) {
             $session_id = $session_manager->get_session_id_from_cookie();
             $user_id = get_current_user_id();
-            error_log(" load_cart_data_for_session_specific_user  session id : " . $session_id);
+            error_log(" set_cart_data_for_session_specific_user  session id : " . $session_id);
 
                 if ($session_id) {
                     $table_name = $wpdb->prefix . 'cm_cart_data';
@@ -140,7 +131,7 @@ class Cart_Manager {
                     if ($cart_data_serialized) {
                         $cart_data = unserialize($cart_data_serialized);
                         if (is_array($cart_data)) {
-                            $woocommerce->cart->empty_cart(true);
+                            // $woocommerce->cart->empty_cart(true);
                             foreach ($cart_data as $cart_item) {
                                 $woocommerce->cart->add_to_cart(
                                     $cart_item['product_id'],
@@ -153,12 +144,23 @@ class Cart_Manager {
                         }
                     }
                 }else{
-                    error_log(" load_cart_data_for_session_specific_user :  No session id found ");
+                    error_log(" set_cart_data_for_session_specific_user :  No session id found ");
                 }
         }else{
               error_log(" NOT A SESSION SPECIFIC USER");
         }
     }
+
+    public function cm_validation_add_to_cart($valid, $product_id, $quantity, $variation_id = '', $variations= '', $cart_item_data = array()) {
+        global $session_manager;
+        if ($session_manager->is_session_specific_user()) {
+            // Custom add to cart logic that stores cart item in custom session-based storage
+            return false; // Return false to prevent the default add to cart behavior
+        }
+        return $valid;
+    }
+
+  
     
 
     public function populate_woocommerce_cart($cart_data) {
