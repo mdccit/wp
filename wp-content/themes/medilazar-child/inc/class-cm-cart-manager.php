@@ -27,13 +27,13 @@ class Cart_Manager {
         error_log("Session started within CM namespace");
     }
 
-    function handle_user_logout() {
+    public function handle_user_logout() {
         global $session_manager, $wpdb;
         $session_id = $session_manager->get_session_id_from_cookie();
      
     }
 
-    function cm_handle_add_to_cart($cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data) {
+    public function cm_handle_add_to_cart($cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data) {
         global $session_manager, $wpdb, $woocommerce;
     
         error_log('cm_handle_add_to_cart called for product ID: ' . $product_id);
@@ -41,13 +41,13 @@ class Cart_Manager {
             $session_key = $session_manager->get_session_key_from_cookie();
             $table_name = $wpdb->prefix . 'cm_cart_data';
 
-            $session_id = $session_manager->get_session_id_by_key($session_key); // Retrieves session ID using session key
+            // $session_id = $session_manager->get_session_id_by_key($session_key); // Retrieves session ID using session key
     
             // Fetch the session ID for the current session key
-            // $session_id = $wpdb->get_var($wpdb->prepare(
-            //     "SELECT session_id FROM {$wpdb->prefix}cm_sessions WHERE session_key = %s",
-            //     $session_key
-            // ));
+            $session_id = $wpdb->get_var($wpdb->prepare(
+                "SELECT session_id FROM {$wpdb->prefix}cm_sessions WHERE session_key = %s",
+                $session_key
+            ));
     
             if (!$session_id) {
                 error_log('No session ID found, exiting cm_handle_add_to_cart');
@@ -103,7 +103,7 @@ class Cart_Manager {
                 );
             }
     
-            error_log('Cart data processed for session-specific user.');
+            error_log('Cart data processed for session-specific user. SESSION ID : '. $session_id);
 
             if (false === $result) {
                 error_log('DB FAILED. Unable to insert/update cart data for session-specific user.');
@@ -122,10 +122,7 @@ class Cart_Manager {
         }
     }
     
-    
-
-
-    function cm_checkout_create_order($order, $data) {
+    public function cm_checkout_create_order($order, $data) {
         global $session_manager;
         if ($session_manager->is_session_specific_user()) {
             global $wpdb;
@@ -142,7 +139,7 @@ class Cart_Manager {
     }
 
 
-    function cm_filter_cart_contents() {
+    public function cm_filter_cart_contents() {
         global $session_manager;
         error_log("Getting customer cart contents");
         if ($session_manager->is_session_specific_user()) {
@@ -191,33 +188,41 @@ class Cart_Manager {
 
     public function load_cart_data_for_session_specific_user() {
         global $woocommerce, $wpdb,$session_manager;       
-        $session_id = $session_manager->get_session_id_from_cookie();
+      
     
-        error_log(" load_cart_data_for_session_specific_user  session id : " . $session_id);
-        if ($session_id) {
-            $table_name = $wpdb->prefix . 'cm_cart_data';
-            $cart_data_serialized = $wpdb->get_var($wpdb->prepare(
-                "SELECT cart_data FROM $table_name WHERE session_id = %d",
-                $session_id
-            ));
-    
-            if ($cart_data_serialized) {
-                $cart_data = unserialize($cart_data_serialized);
-                if (is_array($cart_data)) {
-                    $woocommerce->cart->empty_cart(true);
-                    foreach ($cart_data as $cart_item) {
-                        $woocommerce->cart->add_to_cart(
-                            $cart_item['product_id'],
-                            $cart_item['quantity'],
-                            $cart_item['variation_id'],
-                            $cart_item['variation'],
-                            $cart_item['cart_item_data']
-                        );
+      
+
+        if ($session_manager->is_session_specific_user()) {
+            $session_id = $session_manager->get_session_id_from_cookie();
+            error_log(" load_cart_data_for_session_specific_user  session id : " . $session_id);
+
+                if ($session_id) {
+                    $table_name = $wpdb->prefix . 'cm_cart_data';
+                    $cart_data_serialized = $wpdb->get_var($wpdb->prepare(
+                        "SELECT cart_data FROM $table_name WHERE session_id = %d",
+                        $session_id
+                    ));
+            
+                    if ($cart_data_serialized) {
+                        $cart_data = unserialize($cart_data_serialized);
+                        if (is_array($cart_data)) {
+                            $woocommerce->cart->empty_cart(true);
+                            foreach ($cart_data as $cart_item) {
+                                $woocommerce->cart->add_to_cart(
+                                    $cart_item['product_id'],
+                                    $cart_item['quantity'],
+                                    $cart_item['variation_id'],
+                                    $cart_item['variation'],
+                                    $cart_item['cart_item_data']
+                                );
+                            }
+                        }
                     }
+                }else{
+                    error_log(" load_cart_data_for_session_specific_user :  No session id found ");
                 }
-            }
         }else{
-            error_log(" load_cart_data_for_session_specific_user :  No session id found ");
+              error_log(" NOT A SESSION SPECIFIC USER");
         }
     }
     

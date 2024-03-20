@@ -603,11 +603,12 @@ function xml_error_response($returnCode, $response_message){
  * After the login or logout action, the user is redirected to the home page.
  */
 function cm_login_user_with_url_session_key() {
+    global $session_manager, $wpdb;
     if (!isset($_GET['sessionKey']) && !isset($_GET['userEmail'])) {
         return;
     }
 
-    global $session_manager, $wpdb;
+    
     $session_key = sanitize_text_field($_GET['sessionKey']);
     $session_email = sanitize_email($_GET['userEmail']);
     $user_id = $session_manager->validate_session_key($session_key, $session_email);
@@ -649,6 +650,7 @@ function cm_login_user_with_url_session_key() {
             
             // If no cart data exists for this session ID, empty the cart
             if ($cart_data_exists == 0) {
+                error_log(" Cart Data Clear : ". $session_id ."");
                 WC()->cart->empty_cart();
             }
 
