@@ -608,7 +608,6 @@ function cm_login_user_with_url_session_key() {
         return;
     }
 
-    
     $session_key = sanitize_text_field($_GET['sessionKey']);
     $session_email = sanitize_email($_GET['userEmail']);
     $user_id = $session_manager->validate_session_key($session_key, $session_email);
@@ -744,6 +743,11 @@ function create_cm_cart_data_table() {
 
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         dbDelta($sql);
+
+            // Update version and apply changes based on version
+            if ($installed_ver < CURRENT_CM_SESSION_TABLE_VERSION) {
+                $wpdb->query("ALTER TABLE $table_name ADD COLUMN user_id BIGINT UNSIGNED NOT NULL;");
+            }
 
         // Update the version in the database
         update_option(CM_CART_DATA_TABLE_VERSION_OPTION, CM_CART_DATA_TABLE_VERSION);

@@ -34,8 +34,8 @@ class Cart_Manager {
         if ($session_manager->is_session_specific_user()) {
             $session_key = $session_manager->get_session_key_from_cookie();
             $table_name = $wpdb->prefix . 'cm_cart_data';
-
             $session_id = $session_manager->get_session_id_by_key($session_key); // Retrieves session ID using session key
+            $user_id = get_current_user_id();
       
             if (!$session_id) {
                 error_log('No session ID found, exiting cm_handle_add_to_cart');
@@ -83,6 +83,7 @@ class Cart_Manager {
                     $table_name,
                     array(
                         'session_id' => $session_id,
+                        'user_id' => $user_id,
                         'cart_data' => $updated_cart_data_serialized,
                         'created_at' => current_time('mysql', 1),
                         'updated_at' => current_time('mysql', 1)
