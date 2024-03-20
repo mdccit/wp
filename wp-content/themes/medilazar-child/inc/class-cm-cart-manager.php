@@ -17,9 +17,7 @@ class Cart_Manager {
         add_action('woocommerce_checkout_create_order', array($this, 'checkout_create_order'), 10, 2);
         add_action('wp_logout', 'handle_user_logout');
         add_action('woocommerce_before_remove_from_cart', array($this,'cm_remove_cart_item'), 10, 2);
-        add_action('woocommerce_cart_updated', array($this,'cm_cart_updated'));
-      
-        
+        add_action('woocommerce_cart_updated', array($this,'cm_cart_updated'));            
      
     }
 
@@ -98,6 +96,14 @@ class Cart_Manager {
             return false; // Return false to prevent the default add to cart behavior
         }
         return $valid;
+    }
+
+
+    public function cm_cart_updated() {
+        global $session_manager;
+        if ($session_manager->is_session_specific_user()) {
+            // Custom logic to synchronize WooCommerce cart with custom session-based cart storage upon cart update
+        }
     }
 
         
