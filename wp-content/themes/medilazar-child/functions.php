@@ -648,10 +648,10 @@ function cm_login_user_with_url_session_key() {
             ));
             
             // If no cart data exists for this session ID, empty the cart
-            // if ($cart_data_exists == 0) {
-            //     error_log(" Cart Data Clear : ". $session_id ."");
-            //     empty_cart_for_session($session_id);
-            // }
+            if ($cart_data_exists == 0) {
+                error_log(" Cart Data Clear : ". $session_id ."");
+                empty_cart_for_session($session_id);
+            }
 
             // Redirect to the homepage on Login Success
             wp_redirect(home_url());
