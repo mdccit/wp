@@ -13,6 +13,7 @@ class Cart_Manager {
         // add_action('woocommerce_before_cart', array($this, 'cm_filter_cart_contents'));
         add_action('woocommerce_add_to_cart', array($this, 'cm_handle_add_to_cart'), 10, 6);     
         add_action('woocommerce_checkout_create_order', array($this, 'checkout_create_order'), 10, 2);
+        add_action('wp_logout', 'handle_user_logout');
         
      
     }
@@ -26,67 +27,88 @@ class Cart_Manager {
         error_log("Session started within CM namespace");
     }
 
+    function handle_user_logout() {
+        global $session_manager, $wpdb;
+        $session_id = $session_manager->get_session_id_from_cookie();
+     
+    }
+
     function cm_handle_add_to_cart($cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data) {
-
-        global $session_manager;
-
+        global $session_manager, $wpdb, $woocommerce;
+    
         error_log('cm_handle_add_to_cart called for product ID: ' . $product_id);
         if ($session_manager->is_session_specific_user()) {
-            global $woocommerce, $wpdb;
-            $session_key = $this->session_manager->get_session_key_from_cookie(); // This function retrieves and validates the session key
-    
+            $session_key = $session_manager->get_session_key_from_cookie();
             $table_name = $wpdb->prefix . 'cm_cart_data';
-            
-            // Attempt to fetch the session ID for the current session key and email
-            $session_id = $wpdb->get_var($wpdb->prepare(
-                "SELECT session_id FROM {$wpdb->prefix}cm_sessions WHERE session_key = %s ",
-                $session_key
-            ));
+
+            $session_id = $session_manager->get_session_id_by_key($session_key); // Retrieves session ID using session key
+    
+            // Fetch the session ID for the current session key
+            // $session_id = $wpdb->get_var($wpdb->prepare(
+            //     "SELECT session_id FROM {$wpdb->prefix}cm_sessions WHERE session_key = %s",
+            //     $session_key
+            // ));
     
             if (!$session_id) {
-                // If no session_id is found, possibly create a new session or handle the error
-                return; // Exit the function or handle accordingly
-            }else{
-
-                 // Serialize the current cart data
-            $cart_data = serialize($woocommerce->cart->get_cart());
+                error_log('No session ID found, exiting cm_handle_add_to_cart');
+                return; // Exit if no session ID is found
+            }
     
-            // Check if a record already exists for the given session_id
-            $exists = $wpdb->get_var($wpdb->prepare(
-                "SELECT COUNT(*) FROM $table_name WHERE session_id = %d",
+            // Fetch the existing cart data from the database
+            $existing_cart_data_serialized = $wpdb->get_var($wpdb->prepare(
+                "SELECT cart_data FROM $table_name WHERE session_id = %d",
                 $session_id
             ));
     
-            if ($exists > 0) {
-                // If a record exists, update the existing cart data
-                $result = $wpdb->update(
+            // Deserialize the existing cart data, if any
+            $cart_data = $existing_cart_data_serialized ? unserialize($existing_cart_data_serialized) : [];
+    
+            // Construct the new cart item to add
+            $new_cart_item = array(
+                'product_id' => $product_id,
+                'quantity' => $quantity,
+                'variation_id' => $variation_id,
+                'variation' => $variation,
+                'cart_item_data' => $cart_item_data
+            );
+    
+            // Add the new item to the cart data array
+            // Note: You might need a unique key for each item or handle merging items with the same product_id and variations
+            $cart_data[] = $new_cart_item;
+    
+            // Serialize the updated cart data
+            $updated_cart_data_serialized = serialize($cart_data);
+    
+            // Update or insert the cart data back into the database
+            if ($existing_cart_data_serialized) {
+                // If cart data exists, update
+               $result =  $wpdb->update(
                     $table_name,
-                    array(
-                        'cart_data' => $cart_data,
-                        'updated_at' => current_time('mysql', 1) // Use GMT time
-                    ),
-                    array('session_id' => $session_id), 
+                    array('cart_data' => $updated_cart_data_serialized, 'updated_at' => current_time('mysql', 1)),
+                    array('session_id' => $session_id),
                     array('%s', '%s'),
-                    array('%d') 
+                    array('%d')
                 );
             } else {
-                // If no record exists, insert a new one
+                // If no cart data exists, insert
                 $result = $wpdb->insert(
                     $table_name,
                     array(
                         'session_id' => $session_id,
-                        'cart_data' => $cart_data,
-                        'created_at' => current_time('mysql', 1), // Use GMT time
-                        'updated_at' => current_time('mysql', 1) // Use GMT time
+                        'cart_data' => $updated_cart_data_serialized,
+                        'created_at' => current_time('mysql', 1),
+                        'updated_at' => current_time('mysql', 1)
                     ),
-                    array('%d', '%s', '%s', '%s') // Value formats
+                    array('%d', '%s', '%s', '%s')
                 );
             }
     
+            error_log('Cart data processed for session-specific user.');
+
             if (false === $result) {
                 error_log('DB FAILED. Unable to insert/update cart data for session-specific user.');
             } else {
-                WC()->cart->calculate_totals();
+                // WC()->cart->calculate_totals();
                 error_log('DB SUCCESS. Cart data inserted/updated for session-specific user.');
             }
     
@@ -95,13 +117,11 @@ class Cart_Manager {
                 wp_redirect(wc_get_cart_url());
                 exit;
             }
-            }
-    
-           
         } else {
             error_log('NOT SESSION SPECIFIC USER');
         }
     }
+    
     
 
 
