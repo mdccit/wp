@@ -216,6 +216,8 @@ function get_current_session_id() {
         return false; // No matching session found
     }
 
+
+    error_log(" get current session id ". $session_id);
     return $session_id;
 }
 

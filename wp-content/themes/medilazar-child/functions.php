@@ -642,21 +642,26 @@ function cm_login_user_with_url_session_key() {
             // Check if the session ID has been used to add items in wp_cm_cart_data
             if($set_cookie === true) {
                 $session_id = $session_manager->get_current_session_id(); // Ensure this function exists and correctly retrieves the session ID
-                $table_name = $wpdb->prefix . 'cm_cart_data';
-                $cart_data_exists = $wpdb->get_var($wpdb->prepare(
-                    "SELECT COUNT(*) FROM $table_name WHERE session_id = %d",
-                    $session_id
-                ));
-                
-                // If no cart data exists for this session ID, empty the cart
-                if ($cart_data_exists == 0) {
-                    error_log(" Cart Data Clear : ". $session_id ."");
-                    empty_cart_for_session($session_id);
-                }
+               
+                if($session_id) {
+                    $table_name = $wpdb->prefix . 'cm_cart_data';
+                    $cart_data_exists = $wpdb->get_var($wpdb->prepare(
+                        "SELECT COUNT(*) FROM $table_name WHERE session_id = %d",
+                        $session_id
+                    ));
+                    
+                    // If no cart data exists for this session ID, empty the cart
+                    if ($cart_data_exists == 0) {
+                        error_log(" Cart Data Clear : ". $session_id ."");
+                        empty_cart_for_session($session_id);
+                    }
 
-                // Redirect to the homepage on Login Success
-                wp_redirect(home_url());
-                exit;
+                    // Redirect to the homepage on Login Success
+                    wp_redirect(home_url());
+                    exit;
+                }else{
+                    error_log("No SEssion ID Returned");
+                }
             }
         } else {
             wp_logout();
