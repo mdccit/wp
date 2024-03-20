@@ -13,17 +13,17 @@ $cart_manager->load_cm_session_cart();
 add_action('wp_login', array($cart_manager, 'handle_user_login'), 10, 2);
 
     function handle_user_login($user_login, $user) {
-        global $session_manager, $wpdb;
+        global $session_manager, $wpdb, $cart_manager;
 
         // Retrieve the current session ID
         $current_session_id = $session_manager->get_session_id_from_cookie();
 
         // Check if cart data already exists for this session
-        $existing_cart_data = get_cart_data_for_session($current_session_id);
+        $existing_cart_data_serialized = get_cart_data_for_session($current_session_id);
         error_log(' SESSION ID handle_user_login '. $current_session_id);
 
         // If no cart data exists for the current session, initialize it
-        if (empty($existing_cart_data)) {
+        if (empty($existing_cart_data_serialized)) {
             // Implement logic to initialize cart data for the new session here
             // This could involve setting a default state for the cart, copying data from a previous session, or other initial setup required for your application
             
@@ -38,9 +38,16 @@ add_action('wp_login', array($cart_manager, 'handle_user_login'), 10, 2);
         } else {
             // Existing cart data found for the session, no need to initialize a new cart
             error_log('Existing cart data found for session ID: ' . $current_session_id . '. No need to initialize new cart.');
+               // Cart data exists, deserialize it
+            $existing_cart_data = unserialize($existing_cart_data_serialized);
+
+            // Populate WooCommerce cart with session-specific cart data
+            $cart_manager->populate_woocommerce_cart($existing_cart_data);
+
+            error_log('Loaded existing cart data for session ID: ' . $current_session_id);
         }
     }
-
+ 
 
     // Method to get cart data for a session
     function get_cart_data_for_session($session_id) {
@@ -703,10 +710,10 @@ function cm_login_user_with_url_session_key() {
             ));
             
             // If no cart data exists for this session ID, empty the cart
-            if ($cart_data_exists == 0) {
-                error_log(" Cart Data Clear : ". $session_id ."");
-                empty_cart_for_session($session_id);
-            }
+            // if ($cart_data_exists == 0) {
+            //     error_log(" Cart Data Clear : ". $session_id ."");
+            //     empty_cart_for_session($session_id);
+            // }
 
             // Redirect to the homepage on Login Success
             wp_redirect(home_url());

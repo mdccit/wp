@@ -233,5 +233,34 @@ class Cart_Manager {
         }
     }
     
+
+    public function populate_woocommerce_cart($cart_data) {
+        if (!is_array($cart_data) || empty($cart_data)) {
+            return;
+        }
+
+        WC()->cart->empty_cart();
+
+        foreach ($cart_data as $cart_item) {
+            $product_id = isset($cart_item['product_id']) ? $cart_item['product_id'] : 0;
+            $product = wc_get_product($product_id);
+    
+            if (!$product) {
+                error_log("Product with ID $product_id does not exist.");
+                continue; // Skip adding this product to the cart
+            }
+    
+            $quantity = isset($cart_item['quantity']) ? $cart_item['quantity'] : 1;
+            $variation_id = isset($cart_item['variation_id']) ? $cart_item['variation_id'] : 0;
+            $variations = isset($cart_item['variations']) ? $cart_item['variations'] : array();
+            $cart_item_data = isset($cart_item['cart_item_data']) ? $cart_item['cart_item_data'] : array();
+    
+            // Add the item to WooCommerce's cart
+            WC()->cart->add_to_cart($product_id, $quantity, $variation_id, $variations, $cart_item_data);
+        }
+        
+        WC()->cart->calculate_totals();
+    }
+
     
 }
