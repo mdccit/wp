@@ -96,7 +96,7 @@ class Cart_Manager {
         if ($session_manager->is_session_specific_user()) {
             $session_key = $session_manager->get_session_key_from_cookie();
             $table_name = $wpdb->prefix . 'cm_cart_data';
-            $session_id = $session_manager->get_session_id_by_key($session_key); // Retrieves session ID using session key
+            $session_id = $session_manager->get_current_session_id(); // Retrieves session ID using session key
             $user_id = get_current_user_id();
       
             if (!$session_id) {

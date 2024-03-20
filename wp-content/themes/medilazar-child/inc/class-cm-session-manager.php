@@ -193,12 +193,21 @@ function set_cm_session_cookie($encrypted_session_key_with_iv, $expiration_perio
 }
 
 
-function get_session_id_by_key($session_key) {
+public function get_session_id_from_cookie() {
+    if (!empty($_COOKIE['cm_session_key'])) {
+       // Assume function to validate session key and return session ID
+        return $this->get_current_session_id();
+    }
+    return false;
+}
+
+function get_current_session_id() {
     global $wpdb;
     
+    $decrypted_session_key = $this->getAndDecryptSessionKeyFromCookie();
     // Assuming your sessions table is named 'wp_cm_sessions' and has columns 'session_id' and 'session_key'
     $table_name = $wpdb->prefix . 'cm_sessions';
-    $query = $wpdb->prepare("SELECT session_id FROM $table_name WHERE session_key = %s LIMIT 1", $session_key);
+    $query = $wpdb->prepare("SELECT session_id FROM $table_name WHERE session_key = %s LIMIT 1", $decrypted_session_key);
     $session_id = $wpdb->get_var($query);
 
     if (empty($session_id)) {
@@ -208,14 +217,7 @@ function get_session_id_by_key($session_key) {
     return $session_id;
 }
 
-public function get_session_id_from_cookie() {
-    if (!empty($_COOKIE['cm_session_key'])) {
-        $session_key = sanitize_text_field($_COOKIE['cm_session_key']);
-        // Assume function to validate session key and return session ID
-        return $this->get_session_id_by_key($session_key);
-    }
-    return false;
-}
+
 
 
 

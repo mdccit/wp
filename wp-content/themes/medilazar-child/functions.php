@@ -695,7 +695,7 @@ function cm_login_user_with_url_session_key() {
             $session_manager->set_cm_session_cookie($encrypted_session_key_with_iv, $expiration_period);
             
             // Check if the session ID has been used to add items in wp_cm_cart_data
-            $session_id = $session_manager->get_session_id_by_key($session_key); // Ensure this function exists and correctly retrieves the session ID
+            $session_id = $session_manager->get_current_session_id(); // Ensure this function exists and correctly retrieves the session ID
             $table_name = $wpdb->prefix . 'cm_cart_data';
             $cart_data_exists = $wpdb->get_var($wpdb->prepare(
                 "SELECT COUNT(*) FROM $table_name WHERE session_id = %d",
@@ -705,7 +705,7 @@ function cm_login_user_with_url_session_key() {
             // If no cart data exists for this session ID, empty the cart
             if ($cart_data_exists == 0) {
                 error_log(" Cart Data Clear : ". $session_id ."");
-                WC()->cart->empty_cart();
+                empty_cart_for_session($session_id);
             }
 
             // Redirect to the homepage on Login Success
@@ -728,6 +728,26 @@ function cm_login_user_with_url_session_key() {
 
 
 add_action('init', 'cm_login_user_with_url_session_key');
+
+ function empty_cart_for_session($session_id) {
+    global $session_manager, $wpdb;
+
+    $current_session_id = $session_manager->get_session_id_from_cookie();
+
+    error_log(' Current Session ID'. $current_session_id .'');
+
+    // Check if the current session matches the session we intend to clear
+    if ($current_session_id == $session_id) {
+        // Proceed to empty the cart only if the session matches
+        WC()->cart->empty_cart();
+    } else {
+        // Handle cases where the session does not match
+        // This could involve logging or other business logic as required
+        error_log("Attempted to empty cart for non-matching session ID: {$session_id}");
+    }
+}
+
+
 
 /**
  * Adds custom error messages to the login page.
