@@ -41,7 +41,7 @@ class Cart_Manager {
                 $session_id
             ));
 
-            $cart_data = get_cart_data_for_session($session_id);
+            $cart_data = $this->get_cart_data_for_session($session_id);
         
             if (!empty($cart_data)) {
                 // Clear the current cart to ensure it's empty before loading new items
@@ -185,9 +185,6 @@ class Cart_Manager {
      
     }
 
- 
-
-  
     public function cm_validation_add_to_cart($valid, $product_id, $quantity, $variation_id = '', $variations= '', $cart_item_data = array()) {
         global $session_manager;
         if ($session_manager->is_session_specific_user()) {
@@ -197,15 +194,9 @@ class Cart_Manager {
         return $valid;
     }
 
-
-
-
     public function load_cart_data_for_session_specific_user() {
-        global $woocommerce, $wpdb,$session_manager;       
+        global $woocommerce, $wpdb,$session_manager;      
       
-    
-      
-
         if ($session_manager->is_session_specific_user()) {
             $session_id = $session_manager->get_session_id_from_cookie();
             $user_id = get_current_user_id();
