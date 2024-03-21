@@ -814,3 +814,11 @@ function clear_cm_session_key_cookie() {
 }
 
 
+function enqueue_custom_script_with_session_total() {
+    wp_enqueue_script('custom-session-total', get_template_directory_uri() . '-child/js/custom-session-total.js', array('jquery'), '', true);
+    $session_total = WC()->session->get('session_cart_total') ? WC()->session->get('session_cart_total') : 0;
+    wp_localize_script('custom-session-total', 'sessionTotalData', array(
+        'sessionTotal' => $session_total,
+    ));
+}
+add_action('wp_enqueue_scripts', 'enqueue_custom_script_with_session_total');

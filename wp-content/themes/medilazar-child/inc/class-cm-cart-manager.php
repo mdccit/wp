@@ -19,13 +19,30 @@ class Cart_Manager {
         // add_action('wp_logout', 'handle_user_logout');
         // add_action('woocommerce_before_remove_from_cart', array($this,'cm_remove_cart_item'), 10, 2);
         // add_action('woocommerce_cart_updated', array($this,'cm_cart_updated'));  
-        add_action('woocommerce_cart_loaded_from_session', array($this,'update_session_cart_total'), 100);          
+        //add_action('woocommerce_cart_loaded_from_session', array($this,'update_session_cart_total'), 100);     
+        // add_action('woocommerce_before_calculate_totals', array($this,'conditionally_remove_specific_cart_item'));
+        add_action('cm_ajax_remove_product_from_cart',  array($this,'initialize_cart_handling'));
+        add_action('wp_ajax_nopriv_cm_remove_product_from_cart',  array($this,'initialize_cart_handling'));
+        add_action('wp_enqueue_scripts', array($this,'enqueue_my_custom_script'));
+     
      
     }
 
-    public function initialize_cart_handling() {
-        add_action('woocommerce_before_calculate_totals', array($this, 'cm_filter_cart_contents'));
+
+    function enqueue_my_custom_script() {
+        wp_enqueue_script('my-custom-script', get_template_directory_uri() . '-child/js/custom-session-total.js', array('jquery'), null, true);
+        wp_localize_script('my-custom-script', 'myAjax', array('ajaxurl' => admin_url('admin-ajax.php')));
     }
+
+    public function initialize_cart_handling() {
+        error_log('AJAX request received');
+        check_ajax_referer('nonce-name-here', '_wpnonce');
+
+        error_log(print_r($_POST, true));
+        // The rest of your logic...
+    }
+    
+    
 
     
     public function cm_handle_add_to_cart($cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data) {
@@ -274,19 +291,90 @@ class Cart_Manager {
         }
         return $total;
     }
-    
-    
+       
 
     function update_session_cart_total() {
         global $session_manager;
-        // Assuming you have a way to get the current session ID
-        $session_id = $session_manager->get_current_session_id(); // Define this function based on your session management
-        $session_total = $this->calculate_cart_total_for_session($session_id);
 
-        error_log(' SESSION TOTSL FOR SESSION ID : ' .$session_total);
+        if($session_manager->is_session_specific_user() === true){
+            // Assuming you have a way to get the current session ID
+            $session_id = $session_manager->get_current_session_id(); // Define this function based on your session management
+            $session_total = $this->calculate_cart_total_for_session($session_id);
+
+            error_log(' SESSION TOTSL FOR SESSION ID : ' .$session_total);
+            
+            // Here you could update a session variable, a custom field, or output directly as needed
+            WC()->session->set('session_cart_total', $session_total);
+        }
+    
+    }
+
+
+    function cm_ajax_remove_product_from_cart() {
+        error_log('Removing Product : ');
+        $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
+        error_log('Removed Product : '. $product_id);
+        $session_key = isset($_POST['cm_session_key']) ? sanitize_text_field($_POST['cm_session_key']) : '';
         
-        // Here you could update a session variable, a custom field, or output directly as needed
-        WC()->session->set('session_cart_total', $session_total);
+        if ($product_id > 0 && !empty($session_key)) {
+            $this->cm_handle_remove_from_cart($product_id);
+            wp_send_json_success('Product removed');
+        } else {
+            wp_send_json_error('Missing data');
+        }
+    }
+
+
+    function cm_handle_remove_from_cart($product_id) {
+        global $session_manager, $wpdb;
+
+        // if (is_admin() && !defined('DOING_AJAX')) return;
+        
+        // Check if the user is a session-specific user
+        if (isset($_COOKIE['cm_session_key'])) {
+            $session_id = $session_manager->get_current_session_id();
+            $session_specific_user = $session_manager->is_session_specific_user();
+            
+            if ($session_specific_user) {
+                $table_name = $wpdb->prefix . 'cm_cart_data';
+                
+                // Fetch the serialized cart data for the session
+                $serialized_cart_data = $wpdb->get_var($wpdb->prepare(
+                    "SELECT cart_data FROM {$table_name} WHERE session_id = %s",
+                    $session_id
+                ));
+                
+                if ($serialized_cart_data) {
+                    $cart_data = maybe_unserialize($serialized_cart_data);
+                    $updated_cart_data = array();
+                    
+                    // Assume cart_data is an array of items; adjust according to actual structure
+                    foreach ($cart_data as $item) {
+                        // If the item's product_id matches the one to remove, skip adding it to updated_cart_data
+                        if (isset($item['product_id']) && $item['product_id'] == $product_id) {
+                            continue;
+                        }
+                        $updated_cart_data[] = $item;
+                    }
+                    
+                    // Update the cart_data in the database with the modified array
+                    $wpdb->update(
+                        $table_name,
+                        array('cart_data' => maybe_serialize($updated_cart_data)), // New cart data
+                        array('session_id' => $session_id), // Where clause
+                        array('%s'), // New cart data format
+                        array('%s')  // Where format
+                    );
+                }
+
+                // Proceed to remove the item from WooCommerce cart
+                foreach (WC()->cart->get_cart() as $cart_item_key => $cart_item) {
+                    if ($cart_item['product_id'] == $product_id) {
+                        WC()->cart->remove_cart_item($cart_item_key);
+                    }
+                }
+            }
+        }
     }
 
     
