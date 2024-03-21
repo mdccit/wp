@@ -21,17 +21,11 @@ class Cart_Manager {
         // add_action('woocommerce_cart_updated', array($this,'cm_cart_updated'));  
         //add_action('woocommerce_cart_loaded_from_session', array($this,'update_session_cart_total'), 100);     
         // add_action('woocommerce_before_calculate_totals', array($this,'conditionally_remove_specific_cart_item'));
-        add_action('cm_ajax_remove_product_from_cart',  array($this,'initialize_cart_handling'));
-        add_action('wp_ajax_nopriv_cm_remove_product_from_cart',  array($this,'initialize_cart_handling'));
-        add_action('wp_enqueue_scripts', array($this,'enqueue_my_custom_script'));
+        // add_action('wp_ajax_cm_ajax_remove_product_from_cart',  array($this,'initialize_cart_handling'));
+        // add_action('wp_ajax_nopriv_cm_ajax_remove_product_from_cart',  array($this,'initialize_cart_handling'));
+        // add_action('wp_enqueue_scripts', array($this,'enqueue_my_custom_script'));
      
      
-    }
-
-
-    function enqueue_my_custom_script() {
-        wp_enqueue_script('my-custom-script', get_template_directory_uri() . '-child/js/custom-session-total.js', array('jquery'), null, true);
-        wp_localize_script('my-custom-script', 'myAjax', array('ajaxurl' => admin_url('admin-ajax.php')));
     }
 
     public function initialize_cart_handling() {
