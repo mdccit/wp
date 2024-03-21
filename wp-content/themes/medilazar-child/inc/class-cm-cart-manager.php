@@ -18,7 +18,8 @@ class Cart_Manager {
         // add_action('woocommerce_checkout_create_order', array($this, 'checkout_create_order'), 10, 2);
         // add_action('wp_logout', 'handle_user_logout');
         // add_action('woocommerce_before_remove_from_cart', array($this,'cm_remove_cart_item'), 10, 2);
-        // add_action('woocommerce_cart_updated', array($this,'cm_cart_updated'));            
+        // add_action('woocommerce_cart_updated', array($this,'cm_cart_updated'));  
+        add_action('woocommerce_cart_loaded_from_session', array($this,'update_session_cart_total'), 100);          
      
     }
 
@@ -247,8 +248,46 @@ class Cart_Manager {
         return $valid;
     }
 
-  
+    public function get_cart_data_for_session($session_id) {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'cm_cart_data';
+        $serialized_cart_data = $wpdb->get_var($wpdb->prepare(
+            "SELECT cart_data FROM {$table_name} WHERE session_id = %d",
+            $session_id
+        ));
+        if (!empty($serialized_cart_data)) {
+            return maybe_unserialize($serialized_cart_data);
+        }
+        return false;
+    }
 
+    public function calculate_cart_total_for_session($session_id) {
+        $cart_data = $this->get_cart_data_for_session($session_id);
+        $total = 0;
+        if (is_array($cart_data)) {
+            foreach ($cart_data as $item) {
+                $product = wc_get_product($item['product_id']);
+                if ($product) {
+                    $total += $product->get_price() * $item['quantity'];
+                }
+            }
+        }
+        return $total;
+    }
+    
+    
+
+    function update_session_cart_total() {
+        global $session_manager;
+        // Assuming you have a way to get the current session ID
+        $session_id = $session_manager->get_current_session_id(); // Define this function based on your session management
+        $session_total = $this->calculate_cart_total_for_session($session_id);
+
+        error_log(' SESSION TOTSL FOR SESSION ID : ' .$session_total);
+        
+        // Here you could update a session variable, a custom field, or output directly as needed
+        WC()->session->set('session_cart_total', $session_total);
+    }
 
     
 }
