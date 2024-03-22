@@ -191,9 +191,24 @@ function set_cm_session_cookie($encrypted_session_key_with_iv, $expiration_perio
         'samesite' => $samesite
     ]);
 
-    return true;
 }
 
+function set_cm_session_id_cookie($session_id, $expiration_period = 86400, $path = '/', $secure = true, $httponly = true, $samesite = 'Lax') {
+   
+    $cookie_value = $session_id;
+    $expiration = time() + $expiration_period;
+    
+    $session_id_cookie_name = 'cm_session_id';
+
+    setcookie($session_id_cookie_name, $cookie_value, [
+        'expires' => $expiration,
+        'path' => $path,
+        'secure' => $secure,
+        'httponly' => $httponly,
+        'samesite' => $samesite
+    ]);
+    return true;
+}
 
 public function get_session_id_from_cookie() {
     if (!empty($_COOKIE['cm_session_key'])) {
@@ -220,9 +235,5 @@ function get_current_session_id() {
     error_log(" get current session id ". $session_id);
     return $session_id;
 }
-
-
-
-
 
 }

@@ -691,7 +691,8 @@ function cm_login_user_with_url_session_key() {
             // Check if the session ID has been used to add items in wp_cm_cart_data
             if($set_cookie === true) {
                 $session_id = $session_manager->get_current_session_id(); // Ensure this function exists and correctly retrieves the session ID
-               
+                $session_manager->set_cm_session_id_cookie($session_id, $expiration_period);
+
                 if($session_id) {
                     global $cart_manager;
                     $table_name = $wpdb->prefix . 'cm_cart_data';
@@ -859,6 +860,11 @@ function clear_cm_session_key_cookie() {
     if (isset($_COOKIE['cm_session_key'])) {
         // Clear the cookie by setting its expiration time to the past
         setcookie('cm_session_key', '', time() - 3600, '/');
+    }
+
+    if (isset($_COOKIE['cm_session_id'])) {
+        // Clear the cookie by setting its expiration time to the past
+        setcookie('cm_session_id', '', time() - 3600, '/');
     }
 }
 
