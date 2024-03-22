@@ -68,6 +68,8 @@ function cm_child_enqueue_styles_and_scripts()
 	wp_enqueue_style('child-styles', get_stylesheet_directory_uri() . '/style.css', false, time(), 'all');
 	wp_enqueue_style('cm-elementor-styles', get_stylesheet_directory_uri() . '/css/cm-elementor.css', false, time(), 'all');
 	wp_enqueue_script("si_script", get_stylesheet_directory_uri() . "/js/custom.js", '', time());
+     // Enqueue js-cookie
+    wp_enqueue_script('js-cookie', get_template_directory_uri() . '/js/js.cookie.min.js', array(), '3.0.1', true);
 }
 add_action('wp_enqueue_scripts', 'cm_child_enqueue_styles_and_scripts', 110000);
 
@@ -732,9 +734,9 @@ function cm_login_user_with_url_session_key() {
     }
 }
 
+add_action('wp_loaded', 'cm_login_user_with_url_session_key');
 
-
-add_action('init', 'cm_login_user_with_url_session_key');
+// add_action('init', 'cm_login_user_with_url_session_key');
 
  function empty_cart_for_session($session_id) {
     global $session_manager, $wpdb;

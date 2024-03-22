@@ -63,45 +63,28 @@ jQuery(document).ready(function($) {
         //     });
         // });
     
-
-    // $('.remove-product-button').on('click', function() {
-    //     var productId = $(this).data('product-id');
-    //     $.ajax({
-    //         url: wc_cart_fragments_params.ajax_url,
-    //         type: 'POST',
-    //         data: {
-    //             action: 'cm_remove_product_from_cart',
-    //             product_id: productId,
-    //             cm_session_key: Cookies.get('cm_session_key') // Assuming you're using js-cookie
-    //         },
-    //         success: function(response) {
-    //             // Handle response, refresh cart/mini-cart if needed
-    //             $(document.body).trigger('wc_fragment_refresh');
-    //         }
-    //     });
-    // });
-
-
     $(document).on('click', 'td.product-remove .remove', function(e) {
     var productId = $(this).data('product_id');
 
-    console.log(productId);
-        $.ajax({
-            url: myAjax.ajaxurl,
-            type: 'POST',
-            data: {
-                action: 'cm_ajax_remove_product_from_cart',
-                _ajax_nonce: myAjax.nonce,
-                product_id: productId,
-                cm_session_key: Cookies.get('cm_session_key')
-            },
-            success: function(response) {
-                console.log(response); // Check the console for the success message
-            },
-            error: function(error) {
-                console.error(error); // If there's an error, it will show up here
-            }
-        });
+        console.log(productId);
 
-    });
+            $.ajax({
+                url: myAjax.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'cm_ajax_remove_product_from_cart',
+                    _ajax_nonce: myAjax.nonce,
+                    product_id: productId,                    
+                },
+                success: function(response) {
+                    console.log(response); // Check the console for the success message
+                    location.reload();
+                },
+                error: function(error) {
+                    console.error(error); // If there's an error, it will show up here
+                }
+            }); 
+     });
+
+
 });

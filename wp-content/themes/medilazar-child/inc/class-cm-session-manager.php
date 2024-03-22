@@ -191,6 +191,8 @@ function set_cm_session_cookie($encrypted_session_key_with_iv, $expiration_perio
         'samesite' => $samesite
     ]);
 
+    return true;
+
 }
 
 function set_cm_session_id_cookie($session_id, $expiration_period = 86400, $path = '/', $secure = true, $httponly = true, $samesite = 'Lax') {
@@ -207,6 +209,7 @@ function set_cm_session_id_cookie($session_id, $expiration_period = 86400, $path
         'httponly' => $httponly,
         'samesite' => $samesite
     ]);
+
     return true;
 }
 

@@ -246,7 +246,7 @@ class Cart_Manager {
                     error_log(" set_cart_data_for_session_specific_user :  No session id found ");
                 }
         }else{
-              error_log(" NOT A SESSION SPECIFIC USER");
+              error_log(" CANT LOAD DATA , NOT A SESSION SPECIFIC USER");
         }
     }
 
