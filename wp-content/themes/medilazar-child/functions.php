@@ -6,25 +6,50 @@ require_once get_stylesheet_directory() . '/inc/class-cm-cart-manager.php';
 $session_manager = new \CM\Session_Manager();
 $cart_manager = new \CM\Cart_Manager($session_manager);
 
+// Register AJAX action for logged-in users
+add_action('wp_ajax_test_ajax_action', 'handle_test_ajax_action');
+// Register AJAX action for logged-out users
+add_action('wp_ajax_nopriv_test_ajax_action', 'handle_test_ajax_action');
+
+function handle_test_ajax_action() {
+    // Verify nonce for security (optional step, see Step 3)
+    check_ajax_referer('test_nonce', '_ajax_nonce', true);
+
+    // Simple response to test AJAX is working
+    wp_send_json_success('AJAX request received successfully.');
+
+    // Don't forget to stop execution afterward
+    wp_die();
+}
+
+function enqueue_and_localize_my_script() {
+    wp_enqueue_script('custom-session-total', get_stylesheet_directory_uri() . '/js/custom-session-total.js', array('jquery'), null, true);
+    wp_localize_script('custom-session-total', 'myAjax', array(
+        'ajaxurl' => admin_url('admin-ajax.php'),
+        // Uncomment to pass a nonce to the script
+        'nonce' => wp_create_nonce('test_nonce'),
+    ));
+}
+add_action('wp_enqueue_scripts', 'enqueue_and_localize_my_script');
 
 // $session_manager->start_session();
 // $cart_manager->load_cm_session_cart();
 
-add_action('wp_ajax_cm_ajax_remove_product_from_cart', 'cm_ajax_remove_product_from_cart');
-add_action('wp_ajax_nopriv_cm_ajax_remove_product_from_cart', 'cm_ajax_remove_product_from_cart');
+// add_action('wp_ajax_cm_ajax_remove_product_from_cart', 'cm_ajax_remove_product_from_cart');
+// add_action('wp_ajax_nopriv_cm_ajax_remove_product_from_cart', 'cm_ajax_remove_product_from_cart');
 
 
-function cm_ajax_remove_product_from_cart() {
-    error_log('AJAX request received');
-    check_ajax_referer('nonce-name-here', '_wpnonce');
-    error_log(print_r($_POST, true));
-}
+// function cm_ajax_remove_product_from_cart() {
+//     error_log('AJAX request received');
+//     check_ajax_referer('nonce-name-here', '_wpnonce');
+//     error_log(print_r($_POST, true));
+// }
 
 // function enqueue_custom_script_with_session_total() {
 //     wp_enqueue_script('custom-session-total', get_stylesheet_directory_uri() . '/js/custom-session-total.js', array('jquery'), '', true);
 //     wp_localize_script('custom-session-total', 'myAjax', array(
 //         'ajaxurl' => admin_url('admin-ajax.php'),
-//         'nonce' => wp_create_nonce('my-ajax-nonce') // Creating a nonce for security
+    
 //     ));
 // }
 // add_action('wp_enqueue_scripts', 'enqueue_custom_script_with_session_total');

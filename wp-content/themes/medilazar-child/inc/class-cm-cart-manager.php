@@ -28,13 +28,13 @@ class Cart_Manager {
      
     }
 
-    public function initialize_cart_handling() {
-        error_log('AJAX request received');
-        check_ajax_referer('nonce-name-here', '_wpnonce');
+    // public function initialize_cart_handling() {
+    //     error_log('AJAX request received');
+    //     check_ajax_referer('nonce-name-here', '_wpnonce');
 
-        error_log(print_r($_POST, true));
-        // The rest of your logic...
-    }
+    //     error_log(print_r($_POST, true));
+    //     // The rest of your logic...
+    // }
     
     
 

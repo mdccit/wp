@@ -1,4 +1,5 @@
 jQuery(document).ready(function($) {
+
     function getCookie(name) {
         var value = "; " + document.cookie;
         var parts = value.split("; " + name + "=");
@@ -28,35 +29,39 @@ jQuery(document).ready(function($) {
         updateMiniCartTotal();
     });
 
-        $('td.product-remove .remove').click(function(e) {
-            e.preventDefault(); // Prevent the default link behavior
+   
+        // $('td.product-remove .remove').click(function(e) {
 
-            console.log(myAjax.ajaxurl);
+        //     alert('test');
+        //     e.preventDefault(); // Prevent the default link behavior
+
+        //     console.log(myAjax.ajaxurl);
     
-            var productId = $(this).data('product_id'); // Get the product ID from the data attribute
-            var removeUrl = $(this).attr('href'); // The URL with remove_item query, if needed
-            var nonce = removeUrl.split('_wpnonce=')[1]; // Assuming nonce is part of the URL
+        //     var productId = $(this).data('product_id'); // Get the product ID from the data attribute
+        //     var removeUrl = $(this).attr('href'); // The URL with remove_item query, if needed
+        //     var nonce = removeUrl.split('_wpnonce=')[1]; // Assuming nonce is part of the URL
     
-            $.ajax({
-                type: 'POST',
-                url: myAjax.ajaxurl, // The AJAX URL passed from wp_localize_script
-                data: {
-                    action: 'cm_ajax_remove_product_from_cart', // Your AJAX action
-                    product_id: productId,
-                    cm_session_key: 'your-session-key', // Retrieve this as needed for your logic
-                    _wpnonce: nonce // Passing the nonce for verification
-                },
-                success: function(response) {
-                    if(response.success) {
-                        alert('Product removed');
-                        // Optionally refresh part of your page here, e.g., the cart
-                        location.reload(); // Reload the page to reflect changes, or implement a more graceful update
-                    } else {
-                        alert('Failed to remove product');
-                    }
-                }
-            });
-        });
+        //     console.log('Product ID: '.$productId);
+        //     $.ajax({
+        //         type: 'POST',
+        //         url: myAjax.ajaxurl, // The AJAX URL passed from wp_localize_script
+        //         data: {
+        //             action: 'initialize_cart_handling', // Your AJAX action
+        //             product_id: productId,
+        //             // cm_session_key: 'your-session-key', // Retrieve this as needed for your logic
+        //             // _wpnonce: nonce // Passing the nonce for verification
+        //         },
+        //         success: function(response) {
+        //             if(response.success) {
+        //                 alert('Product removed');
+        //                 // Optionally refresh part of your page here, e.g., the cart
+        //                 location.reload(); // Reload the page to reflect changes, or implement a more graceful update
+        //             } else {
+        //                 alert('Failed to remove product');
+        //             }
+        //         }
+        //     });
+        // });
     
 
     // $('.remove-product-button').on('click', function() {
@@ -77,4 +82,24 @@ jQuery(document).ready(function($) {
     // });
 
 
+  $('td.product-remove .remove').click(function(e) {
+    var productId = $(this).data('product_id');
+
+    console.log(productId);
+        $.ajax({
+            url: myAjax.ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'test_ajax_action',
+                _ajax_nonce: myAjax.nonce,
+            },
+            success: function(response) {
+                console.log(response); // Check the console for the success message
+            },
+            error: function(error) {
+                console.error(error); // If there's an error, it will show up here
+            }
+        });
+
+    });
 });
