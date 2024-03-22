@@ -82,7 +82,7 @@ jQuery(document).ready(function($) {
     // });
 
 
-  $('td.product-remove .remove').click(function(e) {
+    $(document).on('click', 'td.product-remove .remove', function(e) {
     var productId = $(this).data('product_id');
 
     console.log(productId);
@@ -90,8 +90,10 @@ jQuery(document).ready(function($) {
             url: myAjax.ajaxurl,
             type: 'POST',
             data: {
-                action: 'test_ajax_action',
+                action: 'cm_ajax_remove_product_from_cart',
                 _ajax_nonce: myAjax.nonce,
+                product_id: productId,
+                cm_session_key: Cookies.get('cm_session_key')
             },
             success: function(response) {
                 console.log(response); // Check the console for the success message

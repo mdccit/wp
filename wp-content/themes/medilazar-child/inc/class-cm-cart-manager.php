@@ -304,19 +304,7 @@ class Cart_Manager {
     }
 
 
-    function cm_ajax_remove_product_from_cart() {
-        error_log('Removing Product : ');
-        $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
-        error_log('Removed Product : '. $product_id);
-        $session_key = isset($_POST['cm_session_key']) ? sanitize_text_field($_POST['cm_session_key']) : '';
-        
-        if ($product_id > 0 && !empty($session_key)) {
-            $this->cm_handle_remove_from_cart($product_id);
-            wp_send_json_success('Product removed');
-        } else {
-            wp_send_json_error('Missing data');
-        }
-    }
+
 
 
     function cm_handle_remove_from_cart($product_id) {
