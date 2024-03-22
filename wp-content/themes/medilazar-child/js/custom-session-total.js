@@ -62,9 +62,58 @@ jQuery(document).ready(function($) {
         //         }
         //     });
         // });
-    
+        // $(document).on('click', '.plus.quantity-action', function() {
+        //     var productId = $(this).data('product-id');
+        //     var newQuantity = $(this).closest('.quantity').find('.qty');
+        //     alert('updating new quantity : ' + productId);
+        //     // updateCartItemQuantity(productId, newQuantity);
+        // });
+
+        $(document).on('click', '.quantity-action.plus, .quantity-action.minus', function(e) {
+            e.preventDefault();
+        
+            var productId = $(this).closest('tr.woocommerce-cart-form__cart-item').find('.product-remove .remove').data('product_id');
+            var quantityInput = $(this).closest('.quantity').find('.qty');
+            var quantityValue = parseInt(quantityInput.val());
+              
+            // Log the product ID and the new quantity
+            console.log('Product ID:', productId, 'New Quantity:', quantityValue);
+        
+            // Update the quantity input on the page
+            quantityInput.val(quantityValue).trigger('change');
+        
+            // Optionally, trigger an AJAX call here to update the cart on the server side
+            // This would involve sending `productId` and `quantityValue` to a server-side handler
+            updateCartItemQuantity(productId,quantityValue);
+        });
+        
+
+        function updateCartItemQuantity(productId, newQuantity) {
+            console.log(productId);
+            console.log(newQuantity);
+            $.ajax({
+                url: myAjax.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'cm_ajax_update_product_from_cart',
+                    product_id: productId,
+                    quantity: newQuantity,
+                    _ajax_nonce: myAjax.nonce,
+                },
+                success: function(response) {
+                    console.log(response); // Handle the response
+                    // Optionally refresh part of your page here, e.g., cart totals
+                },
+                error: function(error) {
+                    console.error(error); // Handle errors
+                }
+            });
+        }
+        
+
+
     $(document).on('click', 'td.product-remove .remove', function(e) {
-    var productId = $(this).data('product_id');
+        var productId = $(this).data('product_id');
 
         console.log(productId);
 

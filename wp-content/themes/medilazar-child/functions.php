@@ -16,12 +16,12 @@ add_action('wp_ajax_cm_ajax_remove_product_from_cart', 'cm_ajax_remove_product_f
 // Register AJAX action for logged-out users
 add_action('wp_ajax_nopriv_cm_ajax_remove_product_from_cart', 'cm_ajax_remove_product_from_cart');
 
+add_action('wp_ajax_cm_ajax_update_product_from_cart', 'cm_ajax_update_product_from_cart');
+add_action('wp_ajax_nopriv_cm_ajax_update_product_from_cart', 'cm_ajax_update_product_from_cart');
 
 function cm_ajax_remove_product_from_cart() {
     global $cart_manager;
-    error_log('Removing Product : ');
     $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
-    error_log('Removed Product : '. $product_id);
     $session_key = isset($_POST['cm_session_key']) ? sanitize_text_field($_POST['cm_session_key']) : '';
     
     // if ($product_id > 0 && !empty($session_key)) {
@@ -32,6 +32,24 @@ function cm_ajax_remove_product_from_cart() {
         wp_send_json_error('Missing data');
     }
 }
+
+function cm_ajax_update_product_from_cart() {
+    global $cart_manager;
+    error_log('Updating Product...');
+    $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
+    $quantity = isset($_POST['quantity']) ? (int) $_POST['quantity'] : 1;
+    error_log('Updated Product : '. $product_id);
+    error_log('Product Quantity : '. $quantity);
+    $session_key = isset($_POST['cm_session_key']) ? sanitize_text_field($_POST['cm_session_key']) : '';
+    
+    if ($product_id > 0) {
+        $cart_manager->cm_handle_update_cart_item_quantity($product_id,$quantity);
+        wp_send_json_success('Product Updated');
+    } else {
+        wp_send_json_error('Missing data for Update');
+    }
+}
+
 
 function handle_test_ajax_action() {
     // Verify nonce for security (optional step, see Step 3)
@@ -706,7 +724,6 @@ function cm_login_user_with_url_session_key() {
                     // If no cart data exists for this session ID, empty the cart
                     if ($cart_data_exists == 0) {
                         error_log(" Cart Data Clear : ". $session_id ."");
-                        empty_cart_for_session($session_id);
                     }else{
                         error_log(" Loading Cart Data on login : ". $session_id ."");
                         $cart_manager->set_cart_data_for_session_specific_user();
@@ -737,25 +754,6 @@ function cm_login_user_with_url_session_key() {
 add_action('wp_loaded', 'cm_login_user_with_url_session_key');
 
 // add_action('init', 'cm_login_user_with_url_session_key');
-
- function empty_cart_for_session($session_id) {
-    global $session_manager, $wpdb;
-
-    $current_session_id = $session_manager->get_session_id_from_cookie();
-
-    error_log(' Current Session ID'. $current_session_id .'');
-
-    // Check if the current session matches the session we intend to clear
-    if ($current_session_id == $session_id) {
-        // Proceed to empty the cart only if the session matches
-       
-        error_log(' Cart Emptied for Session ID'. $current_session_id .'');
-    } else {
-        // Handle cases where the session does not match
-        // This could involve logging or other business logic as required
-        error_log("Attempted to empty cart for non-matching session ID: {$session_id}");
-    }
-}
 
 function load_user_cart_on_login( $user_login, $user ) {
     $session_key = get_user_meta($user->ID, 'cm_session_key', true);
@@ -868,5 +866,23 @@ function clear_cm_session_key_cookie() {
         // Clear the cookie by setting its expiration time to the past
         setcookie('cm_session_id', '', time() - 3600, '/');
     }
+}
+
+function handle_update_cart_item_quantity() {
+    check_ajax_referer('nonce-name-here', 'nonce'); // Verify nonce for security
+
+    $product_id = isset($_POST['product_id']) ? (int) $_POST['product_id'] : 0;
+    $quantity = isset($_POST['quantity']) ? (int) $_POST['quantity'] : 1;
+
+    if ($product_id > 0 && $quantity > 0) {
+        // Update the cart item quantity logic
+        WC()->cart->set_quantity($cart_item_key, $quantity, $refresh_totals = true);
+
+        wp_send_json_success('Quantity updated');
+    } else {
+        wp_send_json_error('Error updating quantity');
+    }
+
+    wp_die(); // Make sure to stop execution
 }
 

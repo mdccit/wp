@@ -8,13 +8,7 @@ class Session_Manager {
     public function __construct() {
         // Your constructor logic here
     }
-
-    public function start_session() {
-        // Method logic to start a session
-        error_log("Session started within CM namespace");
-    }
-
-    
+   
     public function get_session_key_from_cookie() {
         if (!isset($_COOKIE['cm_session_key'])) {
             return false;
@@ -29,8 +23,6 @@ class Session_Manager {
 
         $decryptedSessionKey = openssl_decrypt($encryptedSessionKey, 'aes-256-cbc', ENCRYPTION_KEY, 0, $iv);
 
-        error_log('Session Key : '.$decryptedSessionKey);
-
         return $decryptedSessionKey !== false ? $decryptedSessionKey : false;
     }
 
@@ -39,9 +31,7 @@ class Session_Manager {
 
         global $session_manager;
         $decryptedSessionKey = $session_manager->getAndDecryptSessionKeyFromCookie();
-    
-        error_log(' SESSION KEY :'. $decryptedSessionKey);
-    
+       
         if (isset($_COOKIE['cm_session_key']) && !empty($_COOKIE['cm_session_key'])) {
            
             if ($session_manager->validate_session_key_format($decryptedSessionKey)) {
@@ -99,7 +89,6 @@ class Session_Manager {
         $table_name = $wpdb->prefix . 'cm_sessions';
         $current_time = current_time('mysql');
 
-        error_log('session validating');
     
         $session = $wpdb->get_row($wpdb->prepare(
             "SELECT * FROM $table_name WHERE session_key = %s AND session_email = %s AND expires_at > %s",
@@ -109,12 +98,11 @@ class Session_Manager {
         ));
     
         if (null !== $session) {
-            error_log(" Valid Session! ");
+    
             // Session is valid
             return $session->user_id;
         }
-    
-        error_log("Warning Valid Session! ");
+
         // Invalid session
         return false;
     }
@@ -158,11 +146,9 @@ class Session_Manager {
         ));
     
         if (null !== $session) {
-            error_log('Valid Sessoin');
             // Session is valid
             return $session->user_id;
         }else{
-            error_log(' InvalidValid Sessoin : '.$sessionKey);
             return false;
         }
     }

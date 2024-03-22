@@ -49,8 +49,7 @@ class Cart_Manager {
             $session_id = $session_manager->get_current_session_id(); // Retrieves session ID using session key
             $user_id = get_current_user_id();
       
-            if (!$session_id) {
-                error_log('No session ID found, exiting cm_handle_add_to_cart');
+            if (!$session_id) {      
                 return; // Exit if no session ID is found
             }
     
@@ -104,12 +103,10 @@ class Cart_Manager {
                 );
             }
     
-            error_log('Cart data processed for session-specific user. SESSION ID : '. $session_id);
 
             if (false === $result) {
                 error_log('DB FAILED. Unable to insert/update cart data for session-specific user.');
-            } else {
-             
+            } else {             
                 error_log('DB SUCCESS. Cart data inserted/updated for session-specific user.');
             }
     
@@ -156,26 +153,11 @@ class Cart_Manager {
 
                             WC()->session->set('cart', $cart_data);
 
-       
-                            // foreach ($cart_data as $cart_item) {
-                            //     error_log('Attempting to add item to cart. Product ID: ' . $cart_item['product_id']);
-                            //     $woocommerce->cart->add_to_cart(
-                            //         $cart_item['product_id'],
-                            //         $cart_item['quantity'],
-                            //         $cart_item['variation_id'],
-                            //         $cart_item['variation'],
-                            //         $cart_item['cart_item_data']
-                            //     );
-                            // }
-
                             error_log('After adding the cart. Cart contents count: ' . WC()->cart->get_cart_contents_count());
                         }
                     }else{
-                        error_log('Before emptying the cart. Cart contents count: ' . WC()->cart->get_cart_contents_count());
-                        $woocommerce->cart->empty_cart(true);
-                        error_log('After emptying the cart. Cart contents count: ' . WC()->cart->get_cart_contents_count());
-                        
-                        error_log(' No cart data found '. $session_id);
+                         $woocommerce->cart->empty_cart(true);
+                         
                     }
                 }else{
                     error_log(" set_cart_data_for_session_specific_user :  No session id found ");
@@ -199,31 +181,27 @@ class Cart_Manager {
         if ($session_manager->is_session_specific_user()) {
             $session_id = $session_manager->get_session_id_from_cookie();
             $user_id = get_current_user_id();
-            error_log(" set_cart_data_for_session_specific_user  session id : " . $session_id);
+          
 
                 if ($session_id) {
 
-                    error_log(" set_cart_data_for_session_specific_user  s : " . $session_id);
+                
                     $table_name = $wpdb->prefix . 'cm_cart_data';
                     $cart_data_serialized = $wpdb->get_var($wpdb->prepare(
                         "SELECT cart_data FROM $table_name WHERE session_id = %d AND user_id = %d",
                         $session_id,
                         $user_id
                     ));
-                    error_log(" set_cart_data_for_session_specific_user  cart_data_serialized: " .$cart_data_serialized);
-                    error_log("Cart data serialized: " . var_export($cart_data_serialized, true));
+               
 
                     if ($cart_data_serialized !== false && $cart_data_serialized !== null && $cart_data_serialized !== '') {
 
-                        error_log(" set_cart_data_for_session_specific_user   cart data serizlied s: " . $session_id);
-
+                  
                         $cart_data = maybe_unserialize($cart_data_serialized);
 
                         if (is_array($cart_data)) {
-                            error_log('Before adding the cart. Cart contents count: ' . WC()->cart->get_cart_contents_count());
-       
+                          
                             foreach ($cart_data as $cart_item) {
-                                error_log('Attempting to add item to cart. Product ID: ' . $cart_item['product_id']);
                                 $woocommerce->cart->add_to_cart(
                                     $cart_item['product_id'],
                                     $cart_item['quantity'],
@@ -233,14 +211,10 @@ class Cart_Manager {
                                 );
                             }
 
-                            error_log('After adding the cart. Cart contents count: ' . WC()->cart->get_cart_contents_count());
-                        }
+                                }
                     }else{
-                        error_log('Before emptying the cart. Cart contents count: ' . WC()->cart->get_cart_contents_count());
-                        $woocommerce->cart->empty_cart(true);
-                        error_log('After emptying the cart. Cart contents count: ' . WC()->cart->get_cart_contents_count());
-                        
-                        error_log(' No cart data found '. $session_id);
+                           $woocommerce->cart->empty_cart(true);
+                      
                     }
                 }else{
                     error_log(" set_cart_data_for_session_specific_user :  No session id found ");
@@ -303,10 +277,6 @@ class Cart_Manager {
     
     }
 
-
-
-
-
     function cm_handle_remove_from_cart($product_id) {
         global $session_manager, $wpdb;
 
@@ -358,6 +328,63 @@ class Cart_Manager {
             }
         }
     }
+
+    function cm_handle_update_cart_item_quantity($product_id, $new_quantity) {
+        global $session_manager, $wpdb;
+    
+        if (isset($_COOKIE['cm_session_key'])) {
+            $session_id = $session_manager->get_current_session_id();
+            $session_specific_user = $session_manager->is_session_specific_user();
+            
+            if ($session_specific_user) {
+                $table_name = $wpdb->prefix . 'cm_cart_data';
+                
+                // Fetch the serialized cart data for the session
+                $serialized_cart_data = $wpdb->get_var($wpdb->prepare(
+                    "SELECT cart_data FROM {$table_name} WHERE session_id = %s",
+                    $session_id
+                ));
+                
+                if ($serialized_cart_data) {
+                    $cart_data = maybe_unserialize($serialized_cart_data);
+                    $updated_cart_data = array();
+                    
+                    // Update quantity in the serialized data
+                    foreach ($cart_data as &$item) {
+                        if (isset($item['product_id']) && $item['product_id'] == $product_id) {
+                            $item['quantity'] = $new_quantity; // Update the quantity
+                        }
+                        $updated_cart_data[] = $item;
+                    }
+                    
+                    // Update the cart_data in the database with the modified array
+                    $wpdb->update(
+                        $table_name,
+                        array('cart_data' => maybe_serialize($updated_cart_data)),
+                        array('session_id' => $session_id),
+                        array('%s'),
+                        array('%s')
+                    );
+                }
+    
+                // Update quantity in the WooCommerce cart
+                $found_cart_item_key = $this->find_cart_item_key_by_product_id($product_id);
+                if ($found_cart_item_key) {
+                    WC()->cart->set_quantity($found_cart_item_key, $new_quantity, true);
+                }
+            }
+        }
+    }
+    
+    function find_cart_item_key_by_product_id($product_id) {
+        foreach (WC()->cart->get_cart() as $cart_item_key => $cart_item) {
+            if ($cart_item['product_id'] == $product_id || $cart_item['variation_id'] == $product_id) {
+                return $cart_item_key;
+            }
+        }
+        return false;
+    }
+ 
 
     
 }
