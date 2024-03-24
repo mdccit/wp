@@ -907,3 +907,20 @@ function handle_update_cart_item_quantity() {
     wp_die(); // Make sure to stop execution
 }
 
+
+add_filter('woocommerce_mini_cart_total', 'custom_mini_cart_total');
+
+
+function custom_mini_cart_total() {
+    global $cart_manager, $session_manager;
+    // Check for session ID and modify $total as necessary
+    $session_id  = $session_manager->get_session_id_from_cookie();
+
+    error_log(' Calculating Minicart Total ::: '. $session_id);
+        // Assuming you have a function to get the total based on session ID
+        $session_total = $cart_manager->calculate_cart_total_for_session($session_id);
+        if ( $session_total ) {
+            return $session_total;
+        }
+    return $session_total;
+}

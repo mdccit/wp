@@ -1,4 +1,4 @@
-jQuery(document).ready(function($) {
+        jQuery(document).ready(function($) {
 
 
         updateMiniCartTotal();
@@ -91,17 +91,15 @@ jQuery(document).ready(function($) {
     
 
      function updateMiniCartTotal() {
-         
-        alert('updating');
+
         if(getSessionIdFromCookie !== null){
             // Assuming you have a function to get the session ID
             var session_id = getSessionIdFromCookie(); // Implement this function to retrieve session ID from a cookie or local storage
 
-            console.log('session id' + session_id);
+            console.log('session id ' + session_id);
 
             if(session_id ){
-                alert('cokkie set');
-
+  
                 $.ajax({
                     url: myAjax.ajaxurl,
                     method: 'POST',
@@ -111,12 +109,12 @@ jQuery(document).ready(function($) {
                         nonce: myAjax.nonce
                     },
                     success: function(response) {
-                        if (response.success) {
-                            // Update the mini cart total with the response data
-                           // $('.cart-contents .amount').text(response.data.total);
-                           alert(response.data.total);
-                           $('.mini-cart-total').text(response.data.total)
-                            console.log('cart total ' + response.data.total);
+                        if (response.success) {                
+
+                            $('.amount').each(function() {
+                                // Replace the current content with the new HTML structure from the response
+                                $(this).replaceWith(response.data.total);
+                            });
                         }
                     },
                     error: function(error) {
