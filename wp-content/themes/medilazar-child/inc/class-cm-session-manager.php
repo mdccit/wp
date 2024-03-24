@@ -192,7 +192,7 @@ function set_cm_session_id_cookie($session_id, $expiration_period = 86400, $path
         'expires' => $expiration,
         'path' => $path,
         'secure' => $secure,
-        'httponly' => $httponly,
+        'httponly' => false,
         'samesite' => $samesite
     ]);
 
@@ -219,9 +219,6 @@ function get_current_session_id() {
     if (empty($session_id)) {
         return false; // No matching session found
     }
-
-
-    error_log(" get current session id ". $session_id);
     return $session_id;
 }
 

@@ -13,6 +13,7 @@ class Cart_Manager {
         // add_action('woocommerce_before_cart', array($this, 'load_cart_data_for_session_specific_user'));
         // // add_action('woocommerce_before_cart', array($this, 'cm_filter_cart_contents'));
         add_action('woocommerce_add_to_cart', array($this, 'cm_handle_add_to_cart'), 10, 6);  
+    //   add_filter('woocommerce_cart_subtotal', 'update_session_cart_total', 10, 1);
         // add_action('woocommerce_load_cart_from_session', array($this, 'load_cart_from_session')); 
         // add_filter('woocommerce_add_to_cart_validation', array($this,'cm_custom_add_to_cart'), 10, 6);  
         // add_action('woocommerce_checkout_create_order', array($this, 'checkout_create_order'), 10, 2);
@@ -247,17 +248,25 @@ class Cart_Manager {
     }
 
     public function calculate_cart_total_for_session($session_id) {
-        $cart_data = $this->get_cart_data_for_session($session_id);
-        $total = 0;
-        if (is_array($cart_data)) {
-            foreach ($cart_data as $item) {
-                $product = wc_get_product($item['product_id']);
-                if ($product) {
-                    $total += $product->get_price() * $item['quantity'];
+        global $session_manager;
+        $current_session_id = $session_manager->get_session_id_from_cookie();
+        if($session_id == $current_session_id){
+            $cart_data = $this->get_cart_data_for_session($session_id);
+            $total = 0;
+            if (is_array($cart_data)) {
+                foreach ($cart_data as $item) {
+                    $product = wc_get_product($item['product_id']);
+                    if ($product) {
+                        $total += $product->get_price() * $item['quantity'];
+                    }
                 }
             }
+    
+            // $total = WC()->cart->get_cart_total();
+            $formatted_cart_total = wc_price($total);
+            return $formatted_cart_total;
         }
-        return $total;
+      
     }
        
 
@@ -272,7 +281,8 @@ class Cart_Manager {
             error_log(' SESSION TOTSL FOR SESSION ID : ' .$session_total);
             
             // Here you could update a session variable, a custom field, or output directly as needed
-            WC()->session->set('session_cart_total', $session_total);
+           WC()->session->set('session_cart_total', 50);
+        //    WC()->session->set('session_cart_total', $session_total);
         }
     
     }

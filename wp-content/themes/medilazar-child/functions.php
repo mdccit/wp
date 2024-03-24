@@ -19,6 +19,9 @@ add_action('wp_ajax_nopriv_cm_ajax_remove_product_from_cart', 'cm_ajax_remove_pr
 add_action('wp_ajax_cm_ajax_update_product_from_cart', 'cm_ajax_update_product_from_cart');
 add_action('wp_ajax_nopriv_cm_ajax_update_product_from_cart', 'cm_ajax_update_product_from_cart');
 
+add_action('wp_ajax_get_mini_cart_total_for_session', 'handle_get_mini_cart_total_for_session');
+add_action('wp_ajax_nopriv_get_mini_cart_total_for_session', 'handle_get_mini_cart_total_for_session');
+
 function cm_ajax_remove_product_from_cart() {
     global $cart_manager;
     $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
@@ -50,6 +53,24 @@ function cm_ajax_update_product_from_cart() {
     }
 }
 
+function handle_get_mini_cart_total_for_session() {
+    global $cart_manager, $session_manager;
+    check_ajax_referer('update_mini_cart_nonce', 'nonce'); // Check the nonce for security
+
+    $session_id = isset($_POST['session_id']) ? sanitize_text_field($_POST['session_id']) : '';
+
+    // Retrieve the cart total for the session ID
+    $current_session_id = $session_manager->get_session_id_from_cookie();
+    if($session_id == $current_session_id){
+        $cart_total = $cart_manager->calculate_cart_total_for_session($session_id);
+        wp_send_json_success(array('total' => $cart_total));
+    }else {
+        wp_send_json_error('Session ID Mismatch');
+    }
+  
+    wp_die();
+}
+
 
 function handle_test_ajax_action() {
     // Verify nonce for security (optional step, see Step 3)
@@ -69,10 +90,12 @@ function handle_test_ajax_action() {
 
 function enqueue_and_localize_my_script() {
     wp_enqueue_script('custom-session-total', get_stylesheet_directory_uri() . '/js/custom-session-total.js', array('jquery'), null, true);
+    // Enqueue js-cookie
+    wp_enqueue_script('js-cookie', get_template_directory_uri() . '/js/js.cookie.min.js', array(), '3.0.1', true);
     wp_localize_script('custom-session-total', 'myAjax', array(
         'ajaxurl' => admin_url('admin-ajax.php'),
         // Uncomment to pass a nonce to the script
-        'nonce' => wp_create_nonce('test_nonce'),
+        'nonce' => wp_create_nonce('update_mini_cart_nonce'),
     ));
 }
 add_action('wp_enqueue_scripts', 'enqueue_and_localize_my_script');
@@ -86,8 +109,6 @@ function cm_child_enqueue_styles_and_scripts()
 	wp_enqueue_style('child-styles', get_stylesheet_directory_uri() . '/style.css', false, time(), 'all');
 	wp_enqueue_style('cm-elementor-styles', get_stylesheet_directory_uri() . '/css/cm-elementor.css', false, time(), 'all');
 	wp_enqueue_script("si_script", get_stylesheet_directory_uri() . "/js/custom.js", '', time());
-     // Enqueue js-cookie
-    wp_enqueue_script('js-cookie', get_template_directory_uri() . '/js/js.cookie.min.js', array(), '3.0.1', true);
 }
 add_action('wp_enqueue_scripts', 'cm_child_enqueue_styles_and_scripts', 110000);
 
