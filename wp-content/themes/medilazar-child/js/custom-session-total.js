@@ -5,19 +5,23 @@
    
 
         $(document).on('click', '.quantity-action.plus, .quantity-action.minus', function(e) {
-            e.preventDefault();
 
-            var productId = $(this).closest('tr.woocommerce-cart-form__cart-item').find('.product-remove .remove').data('product_id');
-            var quantityInput = $(this).closest('.quantity').find('.qty');
-            var quantityValue = parseInt(quantityInput.val());
-              
-            // Log the product ID and the new quantity
-            console.log('Product ID:', productId, 'New Quantity:', quantityValue);
-        
-            // Update the quantity input on the page
-            quantityInput.val(quantityValue).trigger('change');
-        
-            updateCartItemQuantity(productId,quantityValue);
+            if(getSessionIdFromCookie !== null){
+                    e.preventDefault();
+
+                    var productId = $(this).closest('tr.woocommerce-cart-form__cart-item').find('.product-remove .remove').data('product_id');
+                    var quantityInput = $(this).closest('.quantity').find('.qty');
+                    var quantityValue = parseInt(quantityInput.val());
+                    
+                    // Log the product ID and the new quantity
+                    console.log('Product ID:', productId, 'New Quantity:', quantityValue);
+                
+                    // Update the quantity input on the page
+                    quantityInput.val(quantityValue).trigger('change');
+                
+                    updateCartItemQuantity(productId,quantityValue);
+
+            }
         });
         
 
@@ -47,28 +51,29 @@
 
 
     $(document).on('click', 'td.product-remove .remove', function(e) {
-        var productId = $(this).data('product_id');
 
-        console.log(productId);
+        if(getSessionIdFromCookie !== null){
+            var productId = $(this).data('product_id');
 
-            $.ajax({
-                url: myAjax.ajaxurl,
-                type: 'POST',
-                data: {
-                    action: 'cm_ajax_remove_product_from_cart',
-                    _ajax_nonce: myAjax.nonce,
-                    product_id: productId,                    
-                },
-                success: function(response) {
-                    console.log(response); // Check the console for the success message
-                    updateMiniCartTotal();
-               
-                    location.reload();
-                },
-                error: function(error) {
-                    console.error(error); // If there's an error, it will show up here
-                }
-            }); 
+                $.ajax({
+                    url: myAjax.ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'cm_ajax_remove_product_from_cart',
+                        _ajax_nonce: myAjax.nonce,
+                        product_id: productId,                    
+                    },
+                    success: function(response) {
+                        console.log(response); // Check the console for the success message
+                        updateMiniCartTotal();
+                
+                        location.reload();
+                    },
+                    error: function(error) {
+                        console.error(error); // If there's an error, it will show up here
+                    }
+                }); 
+        }
      });
 
 
