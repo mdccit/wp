@@ -6,7 +6,7 @@ define('ENCRYPTION_KEY', base64_decode('XOyFM2ZvbUisqHNRIuN8T9NAH4Rs4lRZZBWVT8VT
 
 class Session_Manager {
     public function __construct() {
-        // Your constructor logic here
+        
     }
    
     public function get_session_key_from_cookie() {
@@ -27,6 +27,19 @@ class Session_Manager {
     }
 
 
+    
+
+    /**
+     * Checks if the current session is associated with a specific user.
+     *
+     * This function validates the session key stored in the 'cm_session_key' cookie
+     * to determine if the current session is specific to a user. The session key is
+     * first decrypted and then validated for its format and authenticity.
+     *
+     * @global object $session_manager The session manager object responsible for handling session operations.
+     *
+     * @return bool Returns true if the session is specific to a user, false otherwise (indicating a normal user).
+     */
     function is_session_specific_user() {
 
         global $session_manager;
@@ -45,24 +58,6 @@ class Session_Manager {
         return false; // This is a normal user
     }
     
-
-    public function expire_sessions_by_email($session_email) {
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'cm_sessions';
-
-        $active_session_threshold = current_time('mysql', 1); // Considering sessions created within the last day as active
-
-        $result = $wpdb->query($wpdb->prepare(
-            "UPDATE $table_name SET expires_at = %s WHERE session_email = %s AND created_at >= DATE_SUB(%s, INTERVAL 1 DAY)",
-            $active_session_threshold, $session_email, $active_session_threshold
-        ));
-
-        if (false === $result) {
-            error_log('Failed to expire sessions by email.');
-        } else {
-            error_log('Sessions expired successfully by email.');
-        }
-    }
 
     public function get_cm_session_expires_at($session_key) {
         global $wpdb;
@@ -226,11 +221,22 @@ function set_cm_session_email_cookie($session_id, $expiration_period = 86400, $p
     return true;
 }
 
+
+/**
+ * Retrieves the current session ID based on the decrypted session key stored in a cookie.
+ *
+ * This function decrypts the session key from the cookie and queries the database
+ * to find the corresponding session ID. The session ID is then returned if found,
+ * otherwise false is returned indicating no matching session was found.
+ *
+ * @global object $wpdb The WordPress database access abstraction object.
+ *
+ * @return mixed Returns the session ID if found, false otherwise.
+ */
 function get_current_session_id() {
     global $wpdb;
     
     $decrypted_session_key = $this->getAndDecryptSessionKeyFromCookie();
-    // Assuming your sessions table is named 'wp_cm_sessions' and has columns 'session_id' and 'session_key'
     $table_name = $wpdb->prefix . 'cm_sessions';
     $query = $wpdb->prepare("SELECT session_id FROM $table_name WHERE session_key = %s LIMIT 1", $decrypted_session_key);
     $session_id = $wpdb->get_var($query);

@@ -16,11 +16,10 @@ class Cart_Manager {
     
     
     public function cm_handle_add_to_cart($cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data) {
-        global $session_manager, $wpdb, $woocommerce;
+        global $session_manager, $wpdb;
     
         error_log('cm_handle_add_to_cart called for product ID: ' . $product_id);
         if ($session_manager->is_session_specific_user()) {
-            $session_key = $session_manager->get_session_key_from_cookie();
             $table_name = $wpdb->prefix . 'cm_cart_data';
             $session_id = $session_manager->get_current_session_id(); // Retrieves session ID using session key
             $user_id = get_current_user_id();
@@ -42,12 +41,12 @@ class Cart_Manager {
             $product_exists = false;
 
             foreach ($cart_data as &$item) {
-                // Check if product ID and variation ID (if applicable) match
+                // Check if product ID match
                 if ($item['product_id'] == $product_id) {
                     // Product exists, so update the quantity
                     $item['quantity'] += 1;
                     $product_exists = true;
-                    break; // Stop the loop as we've found and updated the product
+                    break; 
                 }
             }
 

@@ -20,7 +20,7 @@ jQuery(document).ready(function($) {
                     quantityInput.val(quantityValue).trigger('change');
                 
                     updateCartItemQuantity(productId,quantityValue);
-                    updateMiniCartTotal();
+      
 
             }
         });
@@ -51,8 +51,6 @@ jQuery(document).ready(function($) {
     $(document).on('click', 'td.product-remove .remove , .remove_from_cart_button ', function(e) {
 
         e.preventDefault();
-
-        console.log('removing product');
 
         if(getSessionIdFromCookie !== null){
             var productId = $(this).data('product_id');

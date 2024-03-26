@@ -943,10 +943,8 @@ function custom_mini_cart_total() {
 add_action( 'woocommerce_account_dashboard', 'custom_dashboard_message_with_email' );
 
 function custom_dashboard_message_with_email() {
-    // Check if the cookie exists
     if ( isset( $_COOKIE['cm_session_email'] ) ) {
         $session_email = sanitize_email( $_COOKIE['cm_session_email'] );
-        // Append the cookie value to the dashboard message
         echo '<h3>' .__( 'Detalles de la cuenta' , 'medilazar' ). '</h3>';
         echo '<p>' .__( 'Correo electrónico' , 'medilazar' ). ' : ' . $session_email . '</p>';
     }
