@@ -2,18 +2,19 @@
 
 namespace CM;
 
+use WC_Cart;
 
 class Cart_Manager {
 
     private $session_manager;
     public function __construct($session_manager) {
         $this->session_manager = $session_manager;
-        // add_action('woocommerce_loaded', array($this, 'initialize_cart_handling'));
         add_action('woocommerce_load_cart_from_session', array($this, 'set_cart_data_for_session_specific_user'));
+        add_action('woocommerce_add_to_cart', array($this, 'cm_handle_add_to_cart'), 10, 6);  
+        // add_action('woocommerce_loaded', array($this, 'initialize_cart_handling'));
         // add_action('woocommerce_before_cart', array($this, 'load_cart_data_for_session_specific_user'));
         // // add_action('woocommerce_before_cart', array($this, 'cm_filter_cart_contents'));
-        add_action('woocommerce_add_to_cart', array($this, 'cm_handle_add_to_cart'), 10, 6);  
-    //   add_filter('woocommerce_cart_subtotal', 'update_session_cart_total', 10, 1);
+        // add_filter('woocommerce_before_calculate_totals', 'update_session_cart_total', 10, 1);
         // add_action('woocommerce_load_cart_from_session', array($this, 'load_cart_from_session')); 
         // add_filter('woocommerce_add_to_cart_validation', array($this,'cm_custom_add_to_cart'), 10, 6);  
         // add_action('woocommerce_checkout_create_order', array($this, 'checkout_create_order'), 10, 2);
@@ -39,6 +40,30 @@ class Cart_Manager {
     
     
 
+    function update_session_cart_total($cart_subtotal) {
+        global $session_manager;
+        // Example: Check if a specific session value or condition is met
+        $session_id = $session_manager->get_current_session_id(); // Retrieves session ID using session key
+ 
+        if (!empty(WC()->cart) && WC()->cart instanceof WC_Cart) {
+        if ($session_id) {      
+            // Perform your custom logic here. For example, retrieve a custom subtotal based on the session ID
+            // This is a placeholder value; you should calculate your custom subtotal based on your requirements
+            $custom_subtotal = 100; // Custom subtotal value
+    
+            // Format the custom subtotal value with WooCommerce formatting
+            $custom_subtotal_formatted = wc_price($custom_subtotal);
+    
+            // Return the modified cart subtotal
+            return $custom_subtotal_formatted;
+        }
+    }
+          // If the condition is not met, return the original subtotal
+          return $cart_subtotal;
+    
+      
+    }
+    
     
     public function cm_handle_add_to_cart($cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data) {
         global $session_manager, $wpdb, $woocommerce;
@@ -62,20 +87,35 @@ class Cart_Manager {
     
             // Deserialize the existing cart data, if any
             $cart_data = $existing_cart_data_serialized ? unserialize($existing_cart_data_serialized) : [];
+
+            // Flag to check if product already exists in the cart
+            $product_exists = false;
+
+            foreach ($cart_data as &$item) {
+                // Check if product ID and variation ID (if applicable) match
+                if ($item['product_id'] == $product_id) {
+                    // Product exists, so update the quantity
+                    $item['quantity'] += 1;
+                    $product_exists = true;
+                    break; // Stop the loop as we've found and updated the product
+                }
+            }
+
     
-            // Construct the new cart item to add
-            $new_cart_item = array(
-                'product_id' => $product_id,
-                'quantity' => $quantity,
-                'variation_id' => $variation_id,
-                'variation' => $variation,
-                'cart_item_data' => $cart_item_data
-            );
-    
-            // Add the new item to the cart data array
-            // Note: You might need a unique key for each item or handle merging items with the same product_id and variations
-            $cart_data[] = $new_cart_item;
-    
+            if (!$product_exists) {
+                // Construct the new cart item to add
+                $new_cart_item = array(
+                    'product_id' => $product_id,
+                    'quantity' => $quantity,
+                    'variation_id' => $variation_id,
+                    'variation' => $variation,
+                    'cart_item_data' => $cart_item_data
+                );
+                
+                // Add the new item to the cart data array
+                $cart_data[] = $new_cart_item;
+            }
+            
             // Serialize the updated cart data
             $updated_cart_data_serialized = serialize($cart_data);
     
@@ -261,32 +301,14 @@ class Cart_Manager {
                     }
                 }
             }
-    
+
             // $total = WC()->cart->get_cart_total();
             $formatted_cart_total = wc_price($total);
             return $formatted_cart_total;
         }
       
     }
-       
-
-    function update_session_cart_total() {
-        global $session_manager;
-
-        if($session_manager->is_session_specific_user() === true){
-            // Assuming you have a way to get the current session ID
-            $session_id = $session_manager->get_current_session_id(); // Define this function based on your session management
-            $session_total = $this->calculate_cart_total_for_session($session_id);
-
-            error_log(' SESSION TOTSL FOR SESSION ID : ' .$session_total);
-            
-            // Here you could update a session variable, a custom field, or output directly as needed
-           WC()->session->set('session_cart_total', 50);
-        //    WC()->session->set('session_cart_total', $session_total);
-        }
-    
-    }
-
+     
     function cm_handle_remove_from_cart($product_id) {
         global $session_manager, $wpdb;
 
@@ -298,6 +320,7 @@ class Cart_Manager {
             $session_specific_user = $session_manager->is_session_specific_user();
             
             if ($session_specific_user) {
+                error_log('removeing item');
                 $table_name = $wpdb->prefix . 'cm_cart_data';
                 
                 // Fetch the serialized cart data for the session

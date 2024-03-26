@@ -22,12 +22,53 @@ add_action('wp_ajax_nopriv_cm_ajax_update_product_from_cart', 'cm_ajax_update_pr
 add_action('wp_ajax_get_mini_cart_total_for_session', 'handle_get_mini_cart_total_for_session');
 add_action('wp_ajax_nopriv_get_mini_cart_total_for_session', 'handle_get_mini_cart_total_for_session');
 
+
+
+
+
+// add_action('init', 'check_session_and_use_custom_cart_amount');
+
+// function check_session_and_use_custom_cart_amount() {
+//     if (isset($_COOKIE['session_id'])) {
+//         // Session ID exists, now determine how you can use custom_medilazer_cart_amount
+//         // This step depends on how medilazar_cart_amount is used within your theme
+
+//         // If medilazar_cart_amount is used in a filterable way, you could add a filter
+//         // If it's output directly in template files, you'll need to override those templates in your child theme
+    
+//     }
+// }
+
+// add_action('medilazar_cart_amount', 'update_mini_cart_total');
+
+// Your child theme's functions.php
+if (!function_exists('medilazar_cart_amount')) {
+    function medilazar_cart_amount() {
+        // Leave blank or insert custom functionality
+    }
+}
+add_filter('woocommerce_cart_subtotal', function() {
+    // Custom logic to modify $cart_subtotal
+    global $cart_manager, $session_manager;  
+
+    $cart_subtotal = 0;
+    // Retrieve the cart total for the session ID
+    $current_session_id = $session_manager->get_session_id_from_cookie();
+    if($current_session_id){
+        $cart_subtotal = $cart_manager->calculate_cart_total_for_session($current_session_id);
+            return $cart_subtotal;    
+    }
+   
+    return wc_price($cart_subtotal);
+}, 10, 3);
+
+
+
+
 function cm_ajax_remove_product_from_cart() {
     global $cart_manager;
     $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
-    $session_key = isset($_POST['cm_session_key']) ? sanitize_text_field($_POST['cm_session_key']) : '';
-    
-    // if ($product_id > 0 && !empty($session_key)) {
+ 
     if ($product_id > 0) {
         $cart_manager->cm_handle_remove_from_cart($product_id);
         wp_send_json_success('Product removed');
@@ -38,11 +79,10 @@ function cm_ajax_remove_product_from_cart() {
 
 function cm_ajax_update_product_from_cart() {
     global $cart_manager;
-    error_log('Updating Product...');
+
     $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
     $quantity = isset($_POST['quantity']) ? (int) $_POST['quantity'] : 1;
-    error_log('Updated Product : '. $product_id);
-    error_log('Product Quantity : '. $quantity);
+
     $session_key = isset($_POST['cm_session_key']) ? sanitize_text_field($_POST['cm_session_key']) : '';
     
     if ($product_id > 0) {
@@ -56,20 +96,44 @@ function cm_ajax_update_product_from_cart() {
 function handle_get_mini_cart_total_for_session() {
     global $cart_manager, $session_manager;
     check_ajax_referer('update_mini_cart_nonce', 'nonce'); // Check the nonce for security
-
+    $cart_total = [];
     $session_id = isset($_POST['session_id']) ? sanitize_text_field($_POST['session_id']) : '';
 
     // Retrieve the cart total for the session ID
     $current_session_id = $session_manager->get_session_id_from_cookie();
     if($session_id == $current_session_id){
+
         $cart_total = $cart_manager->calculate_cart_total_for_session($session_id);
-        wp_send_json_success(array('total' => $cart_total));
+     
+       
+        wp_send_json_success(array('total' => $cart_total ));
     }else {
         wp_send_json_error('Session ID Mismatch');
     }
   
     wp_die();
 }
+
+function update_mini_cart_total() {
+
+    global $cart_manager, $session_manager;  
+
+    // Retrieve the cart total for the session ID
+    $current_session_id = $session_manager->get_session_id_from_cookie();
+    if($current_session_id){
+        $cart_total = $cart_manager->calculate_cart_total_for_session($current_session_id);
+        if (!empty(WC()->cart) && WC()->cart instanceof WC_Cart) {
+            return '<span class="amount">' . wp_kses_data(WC()->cart->get_cart_subtotal()) . '</span>';
+        }
+
+        return '';    
+    }else {
+        wp_send_json_error('Session ID Mismatch');
+    }
+  
+    wp_die();
+}
+
 
 
 function handle_test_ajax_action() {
@@ -733,6 +797,7 @@ function cm_login_user_with_url_session_key() {
             if($set_cookie === true) {
                 $session_id = $session_manager->get_current_session_id(); // Ensure this function exists and correctly retrieves the session ID
                 $session_manager->set_cm_session_id_cookie($session_id, $expiration_period);
+                $session_manager->set_cm_session_email_cookie($session_email, $expiration_period);
 
                 if($session_id) {
                     global $cart_manager;
@@ -923,4 +988,19 @@ function custom_mini_cart_total() {
             return $session_total;
         }
     return $session_total;
+}
+
+add_action( 'woocommerce_account_dashboard', 'custom_dashboard_message_with_email' );
+
+function custom_dashboard_message_with_email() {
+    // Check if the cookie exists
+    if ( isset( $_COOKIE['cm_session_email'] ) ) {
+        $session_email = sanitize_email( $_COOKIE['cm_session_email'] );
+        // Append the cookie value to the dashboard message
+        echo '<h3>' .__( 'Detalles de la cuenta' , 'medilazar' ). '</h3>';
+        echo '<p>' .__( 'Correo electrónico' , 'medilazar' ). ' : ' . $session_email . '</p>';
+    } else {
+        // Fallback message if the cookie doesn't exist
+        echo '<p>Session email is not set.</p>';
+    }
 }

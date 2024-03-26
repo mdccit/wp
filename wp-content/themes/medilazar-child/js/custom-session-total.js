@@ -1,4 +1,4 @@
-        jQuery(document).ready(function($) {
+jQuery(document).ready(function($) {
 
 
         updateMiniCartTotal();
@@ -20,6 +20,8 @@
                     quantityInput.val(quantityValue).trigger('change');
                 
                     updateCartItemQuantity(productId,quantityValue);
+                    updateMiniCartTotal();
+                    // location.reload();
 
             }
         });
@@ -50,7 +52,11 @@
         
 
 
-    $(document).on('click', 'td.product-remove .remove', function(e) {
+    $(document).on('click', 'td.product-remove .remove , .remove_from_cart_button ', function(e) {
+
+        e.preventDefault();
+
+        console.log('removing product');
 
         if(getSessionIdFromCookie !== null){
             var productId = $(this).data('product_id');
@@ -66,7 +72,6 @@
                     success: function(response) {
                         console.log(response); // Check the console for the success message
                         updateMiniCartTotal();
-                
                         location.reload();
                     },
                     error: function(error) {
@@ -77,8 +82,8 @@
      });
 
 
-     $('body').on('added_to_cart', function() {
-      updateMiniCartTotal();      
+     $('body').on('ajax_add_to_cart', function() {
+        updateMiniCartTotal();   
     });
 
 
@@ -95,13 +100,12 @@
     }
     
 
-     function updateMiniCartTotal() {
+    function updateMiniCartTotal() {
+
 
         if(getSessionIdFromCookie !== null){
             // Assuming you have a function to get the session ID
             var session_id = getSessionIdFromCookie(); // Implement this function to retrieve session ID from a cookie or local storage
-
-            console.log('session id ' + session_id);
 
             if(session_id ){
   
@@ -114,12 +118,30 @@
                         nonce: myAjax.nonce
                     },
                     success: function(response) {
-                        if (response.success) {                
+                        if (response.success) {   
+    
+                            // $('.woocommerce-mini-cart__total .woocommerce-Price-amount.amount').html(response.data.total);
+                            // $('.woocommerce-Price-amount').each(function() {
+                            //     // Replace the current content with the new HTML structure from the response
+                            //     $(this).replaceWith(response.data.total);
+                            // });
 
-                            $('.amount').each(function() {
-                                // Replace the current content with the new HTML structure from the response
-                                $(this).replaceWith(response.data.total);
-                            });
+                            var $responseTotal = $(response.data.total);
+
+                            amount = response.data.total;
+
+                            var currencySymbol = '';
+                            var amount = '';
+                            amount = response.data.total;
+                            console.log('amount ' + amount);
+                            var currencySymbol = $responseTotal.find('.woocommerce-Price-currencySymbol').html();
+
+                            // Extract the amount, assuming it's the text immediately following the currency symbol
+                            var amount = $responseTotal.find('bdi').clone().children().remove().end().text().trim();
+                        
+                          
+                            $('.cart-contents .amount').html('<font style="vertical-align: inherit;"><font style="vertical-align: inherit;">' +currencySymbol + amount + '</font></font>');
+                            // location.reload();
                         }
                     },
                     error: function(error) {
@@ -127,15 +149,24 @@
                     }
                 });
             }
-           
-        }
-
-        // Only update the mini-cart total if the cm_session_key cookie is present
-        // if (sessionKey !== null && typeof sessionTotalData !== 'undefined') {
-        //     var formattedSessionTotal = wc_price(sessionTotalData.sessionTotal);
-        //     $('.woocommerce-mini-cart__total .woocommerce-Price-amount, .cart-subtotal .woocommerce-Price-amount').html(formattedSessionTotal);
-        // }
+        } 
     }
 
+    function updateMiniCartTotalAndSubtotal(currencySymbol, amount) {
+            // Here you can use the currencySymbol and amount to update the mini cart
+            // This is an example, replace '.mini-cart-total' and '.mini-cart-subtotal' with your actual selectors
+            $('.mini-cart-total').html(currencySymbol + amount);
+            $('.mini-cart-subtotal').html(currencySymbol + amount);
+
+    }
+
+
+    // $('.button[name="update_cart"]').on('click', function(event) {
+    //     // Prevent the default action of the button (optional)
+    //     event.preventDefault();
+
+    //     // Your custom logic here
+    //     alert('Update cart button clicked!');
+    // });
 
 });

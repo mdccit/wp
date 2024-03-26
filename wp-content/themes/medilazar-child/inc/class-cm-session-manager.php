@@ -207,6 +207,25 @@ public function get_session_id_from_cookie() {
     return false;
 }
 
+
+function set_cm_session_email_cookie($session_id, $expiration_period = 86400, $path = '/', $secure = true, $httponly = true, $samesite = 'Lax') {
+   
+    $cookie_value = $session_id;
+    $expiration = time() + $expiration_period;
+    
+    $session_email_cookie_name = 'cm_session_email';
+
+    setcookie($session_email_cookie_name, $cookie_value, [
+        'expires' => $expiration,
+        'path' => $path,
+        'secure' => $secure,
+        'httponly' => false,
+        'samesite' => $samesite
+    ]);
+
+    return true;
+}
+
 function get_current_session_id() {
     global $wpdb;
     
