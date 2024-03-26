@@ -912,7 +912,7 @@ function handle_update_cart_item_quantity() {
 
     if ($product_id > 0 && $quantity > 0) {
         // Update the cart item quantity logic
-        WC()->cart->set_quantity($cart_item_key, $quantity, $refresh_totals = true);
+        WC()->cart->set_quantity($product_id, $quantity, $refresh_totals = true);
 
         wp_send_json_success('Quantity updated');
     } else {

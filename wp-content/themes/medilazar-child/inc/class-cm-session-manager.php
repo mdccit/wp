@@ -2,13 +2,24 @@
 
 namespace CM;
 
-define('ENCRYPTION_KEY', base64_decode('XOyFM2ZvbUisqHNRIuN8T9NAH4Rs4lRZZBWVT8VTDZE='));
+define('ENCRYPTION_KEY', base64_decode('XOyFM2ZvbUisqHNRIuN8T9NAH4Rs4lRZZBWVT8VTDZE=')); // Todo - move to WP-Config 
 
 class Session_Manager {
     public function __construct() {
         
     }
    
+    /**
+     * Retrieves and decrypts the session key from the 'cm_session_key' cookie.
+     *
+     * This method checks if the 'cm_session_key' cookie is set. If it is, the method
+     * decodes the base64-encoded data from the cookie, extracts the initialization
+     * vector (IV) and the encrypted session key, and then decrypts the session key
+     * using AES-256-CBC encryption algorithm with a predefined encryption key.
+     *
+     * @return mixed Returns the decrypted session key if successful, false otherwise.
+     */
+
     public function get_session_key_from_cookie() {
         if (!isset($_COOKIE['cm_session_key'])) {
             return false;
