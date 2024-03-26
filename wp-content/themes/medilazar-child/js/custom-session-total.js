@@ -119,13 +119,7 @@ jQuery(document).ready(function($) {
                     },
                     success: function(response) {
                         if (response.success) {   
-    
-                            // $('.woocommerce-mini-cart__total .woocommerce-Price-amount.amount').html(response.data.total);
-                            // $('.woocommerce-Price-amount').each(function() {
-                            //     // Replace the current content with the new HTML structure from the response
-                            //     $(this).replaceWith(response.data.total);
-                            // });
-
+  
                             var $responseTotal = $(response.data.total);
 
                             amount = response.data.total;
@@ -152,21 +146,6 @@ jQuery(document).ready(function($) {
         } 
     }
 
-    function updateMiniCartTotalAndSubtotal(currencySymbol, amount) {
-            // Here you can use the currencySymbol and amount to update the mini cart
-            // This is an example, replace '.mini-cart-total' and '.mini-cart-subtotal' with your actual selectors
-            $('.mini-cart-total').html(currencySymbol + amount);
-            $('.mini-cart-subtotal').html(currencySymbol + amount);
 
-    }
-
-
-    // $('.button[name="update_cart"]').on('click', function(event) {
-    //     // Prevent the default action of the button (optional)
-    //     event.preventDefault();
-
-    //     // Your custom logic here
-    //     alert('Update cart button clicked!');
-    // });
 
 });

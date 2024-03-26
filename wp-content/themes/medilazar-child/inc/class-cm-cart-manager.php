@@ -2,7 +2,6 @@
 
 namespace CM;
 
-use WC_Cart;
 
 class Cart_Manager {
 
@@ -10,59 +9,10 @@ class Cart_Manager {
     public function __construct($session_manager) {
         $this->session_manager = $session_manager;
         add_action('woocommerce_load_cart_from_session', array($this, 'set_cart_data_for_session_specific_user'));
-        add_action('woocommerce_add_to_cart', array($this, 'cm_handle_add_to_cart'), 10, 6);  
-        // add_action('woocommerce_loaded', array($this, 'initialize_cart_handling'));
-        // add_action('woocommerce_before_cart', array($this, 'load_cart_data_for_session_specific_user'));
-        // // add_action('woocommerce_before_cart', array($this, 'cm_filter_cart_contents'));
-        // add_filter('woocommerce_before_calculate_totals', 'update_session_cart_total', 10, 1);
-        // add_action('woocommerce_load_cart_from_session', array($this, 'load_cart_from_session')); 
-        // add_filter('woocommerce_add_to_cart_validation', array($this,'cm_custom_add_to_cart'), 10, 6);  
-        // add_action('woocommerce_checkout_create_order', array($this, 'checkout_create_order'), 10, 2);
-        // add_action('wp_logout', 'handle_user_logout');
-        // add_action('woocommerce_before_remove_from_cart', array($this,'cm_remove_cart_item'), 10, 2);
-        // add_action('woocommerce_cart_updated', array($this,'cm_cart_updated'));  
-        //add_action('woocommerce_cart_loaded_from_session', array($this,'update_session_cart_total'), 100);     
-        // add_action('woocommerce_before_calculate_totals', array($this,'conditionally_remove_specific_cart_item'));
-        // add_action('wp_ajax_cm_ajax_remove_product_from_cart',  array($this,'initialize_cart_handling'));
-        // add_action('wp_ajax_nopriv_cm_ajax_remove_product_from_cart',  array($this,'initialize_cart_handling'));
-        // add_action('wp_enqueue_scripts', array($this,'enqueue_my_custom_script'));
-     
-     
+        add_action('woocommerce_add_to_cart', array($this, 'cm_handle_add_to_cart'), 10, 6);     
+         
     }
-
-    // public function initialize_cart_handling() {
-    //     error_log('AJAX request received');
-    //     check_ajax_referer('nonce-name-here', '_wpnonce');
-
-    //     error_log(print_r($_POST, true));
-    //     // The rest of your logic...
-    // }
-    
-    
-
-    function update_session_cart_total($cart_subtotal) {
-        global $session_manager;
-        // Example: Check if a specific session value or condition is met
-        $session_id = $session_manager->get_current_session_id(); // Retrieves session ID using session key
- 
-        if (!empty(WC()->cart) && WC()->cart instanceof WC_Cart) {
-        if ($session_id) {      
-            // Perform your custom logic here. For example, retrieve a custom subtotal based on the session ID
-            // This is a placeholder value; you should calculate your custom subtotal based on your requirements
-            $custom_subtotal = 100; // Custom subtotal value
-    
-            // Format the custom subtotal value with WooCommerce formatting
-            $custom_subtotal_formatted = wc_price($custom_subtotal);
-    
-            // Return the modified cart subtotal
-            return $custom_subtotal_formatted;
-        }
-    }
-          // If the condition is not met, return the original subtotal
-          return $cart_subtotal;
-    
-      
-    }
+  
     
     
     public function cm_handle_add_to_cart($cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data) {
@@ -312,8 +262,7 @@ class Cart_Manager {
     function cm_handle_remove_from_cart($product_id) {
         global $session_manager, $wpdb;
 
-        // if (is_admin() && !defined('DOING_AJAX')) return;
-        
+         
         // Check if the user is a session-specific user
         if (isset($_COOKIE['cm_session_key'])) {
             $session_id = $session_manager->get_current_session_id();
