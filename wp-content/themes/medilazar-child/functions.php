@@ -23,30 +23,6 @@ add_action('wp_ajax_get_mini_cart_total_for_session', 'handle_get_mini_cart_tota
 add_action('wp_ajax_nopriv_get_mini_cart_total_for_session', 'handle_get_mini_cart_total_for_session');
 
 
-
-
-
-// add_action('init', 'check_session_and_use_custom_cart_amount');
-
-// function check_session_and_use_custom_cart_amount() {
-//     if (isset($_COOKIE['session_id'])) {
-//         // Session ID exists, now determine how you can use custom_medilazer_cart_amount
-//         // This step depends on how medilazar_cart_amount is used within your theme
-
-//         // If medilazar_cart_amount is used in a filterable way, you could add a filter
-//         // If it's output directly in template files, you'll need to override those templates in your child theme
-    
-//     }
-// }
-
-// add_action('medilazar_cart_amount', 'update_mini_cart_total');
-
-// Your child theme's functions.php
-if (!function_exists('medilazar_cart_amount')) {
-    function medilazar_cart_amount() {
-        // Leave blank or insert custom functionality
-    }
-}
 add_filter('woocommerce_cart_subtotal', function() {
     // Custom logic to modify $cart_subtotal
     global $cart_manager, $session_manager;  
@@ -61,9 +37,6 @@ add_filter('woocommerce_cart_subtotal', function() {
    
     return wc_price($cart_subtotal);
 }, 10, 3);
-
-
-
 
 function cm_ajax_remove_product_from_cart() {
     global $cart_manager;
@@ -133,8 +106,6 @@ function update_mini_cart_total() {
   
     wp_die();
 }
-
-
 
 function handle_test_ajax_action() {
     // Verify nonce for security (optional step, see Step 3)
