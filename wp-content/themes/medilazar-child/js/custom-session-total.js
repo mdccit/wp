@@ -21,7 +21,6 @@ jQuery(document).ready(function($) {
                 
                     updateCartItemQuantity(productId,quantityValue);
                     updateMiniCartTotal();
-                    // location.reload();
 
             }
         });
@@ -40,9 +39,6 @@ jQuery(document).ready(function($) {
                 success: function(response) {
                     console.log(response); // Handle the response
                     updateMiniCartTotal();
-
-                
-                    // Optionally refresh part of your page here, e.g., cart totals
                 },
                 error: function(error) {
                     console.error(error); // Handle errors
@@ -103,9 +99,8 @@ jQuery(document).ready(function($) {
     function updateMiniCartTotal() {
 
 
-        if(getSessionIdFromCookie !== null){
-            // Assuming you have a function to get the session ID
-            var session_id = getSessionIdFromCookie(); // Implement this function to retrieve session ID from a cookie or local storage
+        if(getSessionIdFromCookie !== null){       
+            var session_id = getSessionIdFromCookie();
 
             if(session_id ){
   
@@ -135,7 +130,7 @@ jQuery(document).ready(function($) {
                         
                           
                             $('.cart-contents .amount').html('<font style="vertical-align: inherit;"><font style="vertical-align: inherit;">' +currencySymbol + amount + '</font></font>');
-                            // location.reload();
+                     
                         }
                     },
                     error: function(error) {

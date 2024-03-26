@@ -7,15 +7,11 @@ $session_manager = new \CM\Session_Manager();
 $cart_manager = new \CM\Cart_Manager($session_manager);
 
 // Register AJAX action for logged-in users
-add_action('wp_ajax_test_ajax_action', 'handle_test_ajax_action');
-// Register AJAX action for logged-out users
-add_action('wp_ajax_nopriv_test_ajax_action', 'handle_test_ajax_action');
-
-// Register AJAX action for logged-in users
 add_action('wp_ajax_cm_ajax_remove_product_from_cart', 'cm_ajax_remove_product_from_cart');
 // Register AJAX action for logged-out users
 add_action('wp_ajax_nopriv_cm_ajax_remove_product_from_cart', 'cm_ajax_remove_product_from_cart');
 
+// Register AJAX action for logged-in users
 add_action('wp_ajax_cm_ajax_update_product_from_cart', 'cm_ajax_update_product_from_cart');
 add_action('wp_ajax_nopriv_cm_ajax_update_product_from_cart', 'cm_ajax_update_product_from_cart');
 
@@ -55,8 +51,6 @@ function cm_ajax_update_product_from_cart() {
 
     $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
     $quantity = isset($_POST['quantity']) ? (int) $_POST['quantity'] : 1;
-
-    $session_key = isset($_POST['cm_session_key']) ? sanitize_text_field($_POST['cm_session_key']) : '';
     
     if ($product_id > 0) {
         $cart_manager->cm_handle_update_cart_item_quantity($product_id,$quantity);
@@ -107,33 +101,18 @@ function update_mini_cart_total() {
     wp_die();
 }
 
-function handle_test_ajax_action() {
-    // Verify nonce for security (optional step, see Step 3)
-    check_ajax_referer('test_nonce', '_ajax_nonce', true);
 
-    error_log('Removing Product : ');
-    $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
-    error_log('Removed Product : '. $product_id);
-    wp_send_json_success('AJAX request received successfully.'.$product_id);
-
-    // Simple response to test AJAX is working
-    // wp_send_json_success('AJAX request received successfully.');
-
-    // Don't forget to stop execution afterward
-    wp_die();
-}
-
-function enqueue_and_localize_my_script() {
+function enqueue_and_localize_cm_script() {
     wp_enqueue_script('custom-session-total', get_stylesheet_directory_uri() . '/js/custom-session-total.js', array('jquery'), null, true);
     // Enqueue js-cookie
     wp_enqueue_script('js-cookie', get_template_directory_uri() . '/js/js.cookie.min.js', array(), '3.0.1', true);
     wp_localize_script('custom-session-total', 'myAjax', array(
         'ajaxurl' => admin_url('admin-ajax.php'),
-        // Uncomment to pass a nonce to the script
         'nonce' => wp_create_nonce('update_mini_cart_nonce'),
     ));
 }
-add_action('wp_enqueue_scripts', 'enqueue_and_localize_my_script');
+
+add_action('wp_enqueue_scripts', 'enqueue_and_localize_cm_script');
 
 
 /**
@@ -970,8 +949,5 @@ function custom_dashboard_message_with_email() {
         // Append the cookie value to the dashboard message
         echo '<h3>' .__( 'Detalles de la cuenta' , 'medilazar' ). '</h3>';
         echo '<p>' .__( 'Correo electrónico' , 'medilazar' ). ' : ' . $session_email . '</p>';
-    } else {
-        // Fallback message if the cookie doesn't exist
-        echo '<p>Session email is not set.</p>';
     }
 }
