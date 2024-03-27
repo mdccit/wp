@@ -15,6 +15,9 @@ add_action('wp_ajax_nopriv_cm_ajax_remove_product_from_cart', 'cm_ajax_remove_pr
 add_action('wp_ajax_cm_ajax_update_product_from_cart', 'cm_ajax_update_product_from_cart');
 add_action('wp_ajax_nopriv_cm_ajax_update_product_from_cart', 'cm_ajax_update_product_from_cart');
 
+add_action('wp_ajax_cm_ajax_update_product_from_product_page', 'handle_cm_update_product_from_product_page');
+add_action('wp_ajax_nopriv_cm_ajax_update_product_from_product_page', 'handle_cm_update_product_from_product_page');
+
 add_action('wp_ajax_get_mini_cart_total_for_session', 'handle_get_mini_cart_total_for_session');
 add_action('wp_ajax_nopriv_get_mini_cart_total_for_session', 'handle_get_mini_cart_total_for_session');
 
@@ -24,18 +27,18 @@ add_filter('woocommerce_cart_subtotal', function($cart_subtotal, $compound, $ins
         // Retrieve the cart total for the session ID
         $current_session_id = $session_manager->get_session_id_from_cookie();
         $session_specific_user = $session_manager->is_session_specific_user();
+     
         if($session_specific_user){          
             if($current_session_id){
                 $cart_subtotal = $cart_manager->calculate_cart_total_for_session($current_session_id);
-                return wc_price($cart_subtotal);    
+              
+                return $cart_subtotal;    
             }        
-        } 
-        // else{
-        //     // For a normal WooCommerce user, retrieve the subtotal directly from the WC cart
-        //     // global $woocommerce;
-        //     // $cart_subtotal = $woocommerce->cart->get_cart_subtotal();
-        // }
-        return wc_price($cart_subtotal);      
+        }
+
+            return  $cart_subtotal;      
+        
+      
 }, 10, 3);
 
 
@@ -84,24 +87,42 @@ function cm_ajax_update_product_from_cart() {
     }
 }
 
+function handle_cm_update_product_from_product_page() {
+
+    global $cart_manager , $session_manager;
+    check_ajax_referer('update_mini_cart_nonce', 'nonce'); // Check the nonce for security
+    $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
+    $quantity = isset($_POST['quantity']) ? (int) $_POST['quantity'] : 1;
+    error_log('PRODUCT_IT'.$product_id);
+    $session_specific_user = $session_manager->is_session_specific_user();
+    if($session_specific_user){
+        if ($product_id > 0) {
+            $cart_manager->cm_handle_update_cart_item_quantity_product_page($product_id,$quantity);
+            wp_send_json_success('Product Quantity Updated');
+        } else {
+            wp_send_json_error('Missing data for Update');
+        }
+    }
+}
+
+
 function handle_get_mini_cart_total_for_session() {
     global $cart_manager, $session_manager;
     check_ajax_referer('update_mini_cart_nonce', 'nonce'); // Check the nonce for security
     $cart_total = [];
     $session_id = isset($_POST['session_id']) ? sanitize_text_field($_POST['session_id']) : '';
-    $session_specific_user = $session_manager->is_session_specific_user();
 
     // Retrieve the cart total for the session ID
     $current_session_id = $session_manager->get_session_id_from_cookie();
-    if($session_specific_user){
+  
             if($session_id == $current_session_id){
                 $cart_total = $cart_manager->calculate_cart_total_for_session($session_id);            
                 wp_send_json_success(array('total' => $cart_total ));
             }else {
                 wp_send_json_error('Session ID Mismatch');
-            }  
-        wp_die();
-    }
+            }          
+    
+    wp_die();
 }
 
 function enqueue_and_localize_cm_script() {

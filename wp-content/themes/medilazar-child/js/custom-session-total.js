@@ -1,7 +1,7 @@
 jQuery(document).ready(function($) {
 
 
-         updateMiniCartTotal();
+        updateMiniCartTotal();
    
 
         $(document).on('click', '.quantity-action.plus, .quantity-action.minus', function(e) {
@@ -17,14 +17,13 @@ jQuery(document).ready(function($) {
                     quantityInput.val(quantityValue).trigger('change');
                     $('button[name="update_cart"]').trigger('click');
                 
-                    updateCartItemQuantity(productId,quantityValue);
-      
+                    updateCartItemQuantity(productId,quantityValue);    
 
             }
         });
         
-
         function updateCartItemQuantity(productId, newQuantity) {
+
             $.ajax({
                 url: myAjax.ajaxurl,
                 type: 'POST',
@@ -42,14 +41,60 @@ jQuery(document).ready(function($) {
                 }
             });
         }
+
+
+        $('.single_add_to_cart_button').on('click', function(e) {
+          
+            // Prevent the default form submission if necessary
+            if(getSessionIdFromCookie !== null){
+                e.preventDefault();
+    
+                // Capture the quantity value
+                var quantityValue = $('.input-text.qty.text').val();
         
+                // Capture the product ID
+                var productId = $(this).val(); // This assumes the button's value attribute holds the product ID
+        
+                // Log or use the captured values
+                console.log("Updating Product ID: " + productId + ", Quantity: " + quantityValue);
+                updateCartItemQuantityFromProductPage(productId,quantityValue);
+            }
+        });
+        
+        function updateCartItemQuantityFromProductPage(productId, newQuantity) {
+
+            console.log('Product ID' + productId + ' Added  Quantity : ' + newQuantity)
+            $.ajax({
+                url: myAjax.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'cm_ajax_update_product_from_product_page',
+                    product_id: productId,
+                    quantity: newQuantity,
+                    _ajax_nonce: myAjax.nonce,
+                },
+                success: function(response) {
+                    console.log(response);
+                 updateMiniCartTotal();
+                },
+                error: function(jqXHR) {
+                    var response = JSON.parse(jqXHR.responseText);
+                    if (response && response.message) {
+                        console.error("Server-side error: " + response.message);
+                    } else {
+                        console.error("AJAX error without a detailed description.");
+                    }
+                }
+                
+                
+            });
+        }
 
 
     $(document).on('click', 'td.product-remove .remove , .remove_from_cart_button ', function(e) {
-
-        e.preventDefault();
-
         if(getSessionIdFromCookie !== null){
+            e.preventDefault();
+
             var productId = $(this).data('product_id');
 
                 $.ajax({
@@ -60,8 +105,11 @@ jQuery(document).ready(function($) {
                         _ajax_nonce: myAjax.nonce,
                         product_id: productId,                    
                     },
-                    success: function(response) {            
+                    success: function(response) {   
+                        console.log(response);         
                         updateMiniCartTotal();
+                        $('button[name="update_cart"]').trigger('click');
+                        location.reload();
                     },
                     error: function(error) {
                         console.error(error); // If there's an error, it will show up here
@@ -94,9 +142,7 @@ jQuery(document).ready(function($) {
 
         if(getSessionIdFromCookie !== null){       
             var session_id = getSessionIdFromCookie();
-
-            if(session_id ){
-  
+ 
                 $.ajax({
                     url: myAjax.ajaxurl,
                     method: 'POST',
@@ -116,6 +162,7 @@ jQuery(document).ready(function($) {
                             var currencySymbol = $responseTotal.find('.woocommerce-Price-currencySymbol').html();
                             // Extract the amount, assuming it's the text immediately following the currency symbol
                             var amount = $responseTotal.find('bdi').clone().children().remove().end().text().trim(); 
+                            console.log('total : '  + amount);
                             $('.cart-contents .amount').html('<font style="vertical-align: inherit;"><font style="vertical-align: inherit;">' +currencySymbol + amount + '</font></font>');
                      
                         }
@@ -124,7 +171,7 @@ jQuery(document).ready(function($) {
                         console.error('Error updating mini cart:', error);
                     }
                 });
-            }
+            
         } 
     }
 });

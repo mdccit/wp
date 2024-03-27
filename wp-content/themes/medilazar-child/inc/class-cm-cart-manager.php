@@ -318,10 +318,11 @@ class Cart_Manager {
         if (isset($_COOKIE['cm_session_key'])) {
             $session_id = $session_manager->get_current_session_id();
             $session_specific_user = $session_manager->is_session_specific_user();
+            $user_id = get_current_user_id();
             
             if ($session_specific_user) {
                 $table_name = $wpdb->prefix . 'cm_cart_data';
-                
+            
                 // Fetch the serialized cart data for the session
                 $serialized_cart_data = $wpdb->get_var($wpdb->prepare(
                     "SELECT cart_data FROM {$table_name} WHERE session_id = %s",
@@ -331,16 +332,16 @@ class Cart_Manager {
                 if ($serialized_cart_data) {
                     $cart_data = maybe_unserialize($serialized_cart_data);
                     $updated_cart_data = array();
-                    
-                    // Update quantity in the serialized data
-                    foreach ($cart_data as &$item) {
-                        if (isset($item['product_id']) && $item['product_id'] == $product_id) {
-                            $item['quantity'] = $new_quantity; // Update the quantity
+                                
+                // Update quantity in the serialized data
+                foreach ($cart_data as &$item) {
+                    if (isset($item['product_id']) && $item['product_id'] == $product_id) {
+                        $item['quantity'] = $new_quantity; // Update the quantity
                         }
                         $updated_cart_data[] = $item;
                     }
-                    
-                    // Update the cart_data in the database with the modified array
+    
+                // Update the cart_data in the database with the modified array
                     $wpdb->update(
                         $table_name,
                         array('cart_data' => maybe_serialize($updated_cart_data)),
@@ -348,12 +349,95 @@ class Cart_Manager {
                         array('%s'),
                         array('%s')
                     );
-                }
-    
+                } 
+ 
                 // Update quantity in the WooCommerce cart
                 $found_cart_item_key = $this->find_cart_item_key_by_product_id($product_id);
                 if ($found_cart_item_key) {
                     WC()->cart->set_quantity($found_cart_item_key, $new_quantity, true);
+                }
+            }
+        }
+    }
+
+    function cm_handle_update_cart_item_quantity_product_page($product_id, $new_quantity) {
+        global $session_manager, $wpdb;
+    
+        if (isset($_COOKIE['cm_session_key'])) {
+            $session_id = $session_manager->get_current_session_id();
+            $session_specific_user = $session_manager->is_session_specific_user();
+            $user_id = get_current_user_id();
+            
+            if ($session_specific_user) {
+                $table_name = $wpdb->prefix . 'cm_cart_data';
+    
+                // Fetch the serialized cart data for the session
+                $serialized_cart_data = $wpdb->get_var($wpdb->prepare(
+                    "SELECT cart_data FROM {$table_name} WHERE session_id = %s",
+                    $session_id
+                ));
+    
+                $cart_data = $serialized_cart_data ? maybe_unserialize($serialized_cart_data) : array();
+
+                error_log(' CART_DATA_SET');
+                error_log(print_r($cart_data, true));
+                error_log(' CART_DATA_OVER');
+
+                $product_exists_in_cart = false;
+                
+                // Check if the product exists in the cart and update its quantity
+                foreach ($cart_data as &$item) {
+                    error_log('PRODUCT_ID_EXIST');
+                    if (isset($item['product_id']) && (int) $item['product_id'] === (int) $product_id) {
+                        error_log('PRODUCT_ID_EXIST_TRUE');
+                        // Add the new quantity to the current quantity instead of just updating it
+                        $item['quantity'] += $new_quantity; // Increment the quantity
+                        $product_exists_in_cart = true; // Mark that the product exists
+                        if (!isset($item['variation_id'])) { // Ensure variation_id exists
+                            $item['variation_id'] = 0;
+                        }
+                        if (!isset($item['variation'])) { // Ensure variation exists
+                            $item['variation'] = array();
+                        }
+                        break; // Stop the loop once the product is found and updated
+                    }
+                }        
+            
+                // If the product doesn't exist in the cart, add it
+                if (!$product_exists_in_cart) {
+                    $cart_data[] = array(
+                        'product_id' => $product_id,
+                        'quantity' => $new_quantity, 
+                        'variation_id' => 0, // Add this line
+                        'variation' => array(),
+                    );
+                }
+
+                $updated_cart_data_serialized = maybe_serialize($cart_data);
+    
+                // Update or insert the cart_data in the database
+                if ($serialized_cart_data) {
+                    // There's existing cart data, so update it
+                    $wpdb->update(
+                        $table_name,
+                        array('cart_data' => $updated_cart_data_serialized),
+                        array('session_id' => $session_id),
+                        array('%s'),
+                        array('%s')
+                    );
+                } else {
+                    // No existing cart data, perform an insert
+                    $wpdb->insert(
+                        $table_name,
+                        array(
+                            'session_id' => $session_id,
+                            'user_id' => $user_id,
+                            'cart_data' => $updated_cart_data_serialized,
+                            'created_at' => current_time('mysql', 1),
+                            'updated_at' => current_time('mysql', 1)
+                        ),
+                        array('%s', '%d', '%s', '%s', '%s') // Ensure correct placeholders
+                    );
                 }
             }
         }
