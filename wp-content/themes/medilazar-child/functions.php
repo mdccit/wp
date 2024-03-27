@@ -19,44 +19,68 @@ add_action('wp_ajax_get_mini_cart_total_for_session', 'handle_get_mini_cart_tota
 add_action('wp_ajax_nopriv_get_mini_cart_total_for_session', 'handle_get_mini_cart_total_for_session');
 
 
-add_filter('woocommerce_cart_subtotal', function() {
-    // Custom logic to modify $cart_subtotal
-    global $cart_manager, $session_manager;  
+add_filter('woocommerce_cart_subtotal', function($cart_subtotal, $compound, $instance) {
+        global $cart_manager, $session_manager;  
+        // Retrieve the cart total for the session ID
+        $current_session_id = $session_manager->get_session_id_from_cookie();
+        $session_specific_user = $session_manager->is_session_specific_user();
+        if($session_specific_user){          
+            if($current_session_id){
+                $cart_subtotal = $cart_manager->calculate_cart_total_for_session($current_session_id);
+                return wc_price($cart_subtotal);    
+            }        
+        } 
+        // else{
+        //     // For a normal WooCommerce user, retrieve the subtotal directly from the WC cart
+        //     // global $woocommerce;
+        //     // $cart_subtotal = $woocommerce->cart->get_cart_subtotal();
+        // }
+        return wc_price($cart_subtotal);      
+}, 10, 3);
 
-    $cart_subtotal = 0;
+
+function cm_add_body_class( $classes ) {
+    global $session_manager;  
+
     // Retrieve the cart total for the session ID
     $current_session_id = $session_manager->get_session_id_from_cookie();
     if($current_session_id){
-        $cart_subtotal = $cart_manager->calculate_cart_total_for_session($current_session_id);
-            return $cart_subtotal;    
+            $classes[] = 'cm-session-user';       
     }
-   
-    return wc_price($cart_subtotal);
-}, 10, 3);
+    return $classes;
+}
+add_filter( 'body_class', 'cm_add_body_class' );
 
 function cm_ajax_remove_product_from_cart() {
-    global $cart_manager;
+
+    global $cart_manager , $session_manager;
     $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
  
-    if ($product_id > 0) {
-        $cart_manager->cm_handle_remove_from_cart($product_id);
-        wp_send_json_success('Product removed');
-    } else {
-        wp_send_json_error('Missing data');
+    $session_specific_user = $session_manager->is_session_specific_user();
+    if($session_specific_user){
+        if ($product_id > 0) {
+            $cart_manager->cm_handle_remove_from_cart($product_id);
+            wp_send_json_success('Product removed');
+        } else {
+            wp_send_json_error('Missing data');
+        }
     }
 }
 
 function cm_ajax_update_product_from_cart() {
-    global $cart_manager;
+    global $cart_manager , $session_manager;
 
     $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
     $quantity = isset($_POST['quantity']) ? (int) $_POST['quantity'] : 1;
     
-    if ($product_id > 0) {
-        $cart_manager->cm_handle_update_cart_item_quantity($product_id,$quantity);
-        wp_send_json_success('Product Updated');
-    } else {
-        wp_send_json_error('Missing data for Update');
+    $session_specific_user = $session_manager->is_session_specific_user();
+    if($session_specific_user){
+        if ($product_id > 0) {
+            $cart_manager->cm_handle_update_cart_item_quantity($product_id,$quantity);
+            wp_send_json_success('Product Updated');
+        } else {
+            wp_send_json_error('Missing data for Update');
+        }
     }
 }
 
@@ -65,51 +89,35 @@ function handle_get_mini_cart_total_for_session() {
     check_ajax_referer('update_mini_cart_nonce', 'nonce'); // Check the nonce for security
     $cart_total = [];
     $session_id = isset($_POST['session_id']) ? sanitize_text_field($_POST['session_id']) : '';
+    $session_specific_user = $session_manager->is_session_specific_user();
 
     // Retrieve the cart total for the session ID
     $current_session_id = $session_manager->get_session_id_from_cookie();
-    if($session_id == $current_session_id){
-
-        $cart_total = $cart_manager->calculate_cart_total_for_session($session_id);
-     
-       
-        wp_send_json_success(array('total' => $cart_total ));
-    }else {
-        wp_send_json_error('Session ID Mismatch');
+    if($session_specific_user){
+            if($session_id == $current_session_id){
+                $cart_total = $cart_manager->calculate_cart_total_for_session($session_id);            
+                wp_send_json_success(array('total' => $cart_total ));
+            }else {
+                wp_send_json_error('Session ID Mismatch');
+            }  
+        wp_die();
     }
-  
-    wp_die();
 }
-
-function update_mini_cart_total() {
-
-    global $cart_manager, $session_manager;  
-
-    // Retrieve the cart total for the session ID
-    $current_session_id = $session_manager->get_session_id_from_cookie();
-    if($current_session_id){
-        $cart_total = $cart_manager->calculate_cart_total_for_session($current_session_id);
-        if (!empty(WC()->cart) && WC()->cart instanceof WC_Cart) {
-            return '<span class="amount">' . wp_kses_data(WC()->cart->get_cart_subtotal()) . '</span>';
-        }
-
-        return '';    
-    }else {
-        wp_send_json_error('Session ID Mismatch');
-    }
-  
-    wp_die();
-}
-
 
 function enqueue_and_localize_cm_script() {
-    wp_enqueue_script('custom-session-total', get_stylesheet_directory_uri() . '/js/custom-session-total.js', array('jquery'), null, true);
-    // Enqueue js-cookie
-    wp_enqueue_script('js-cookie', get_template_directory_uri() . '/js/js.cookie.min.js', array(), '3.0.1', true);
-    wp_localize_script('custom-session-total', 'myAjax', array(
-        'ajaxurl' => admin_url('admin-ajax.php'),
-        'nonce' => wp_create_nonce('update_mini_cart_nonce'),
-    ));
+
+    global  $session_manager;  
+
+    $session_specific_user = $session_manager->is_session_specific_user();
+    if($session_specific_user){
+        wp_enqueue_script('custom-session-total', get_stylesheet_directory_uri() . '/js/custom-session-total.js', array('jquery'), null, true);
+        // Enqueue js-cookie
+        wp_enqueue_script('js-cookie', get_template_directory_uri() . '/js/js.cookie.min.js', array(), '3.0.1', true);
+        wp_localize_script('custom-session-total', 'myAjax', array(
+            'ajaxurl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('update_mini_cart_nonce'),
+        ));
+    }
 }
 
 add_action('wp_enqueue_scripts', 'enqueue_and_localize_cm_script');
@@ -901,6 +909,11 @@ function clear_cm_session_key_cookie() {
     if (isset($_COOKIE['cm_session_id'])) {
         // Clear the cookie by setting its expiration time to the past
         setcookie('cm_session_id', '', time() - 3600, '/');
+    }
+
+    if (isset($_COOKIE['cm_session_email'])) {
+        // Clear the cookie by setting its expiration time to the past
+        setcookie('cm_session_email', '', time() - 3600, '/');
     }
 }
 

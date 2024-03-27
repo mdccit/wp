@@ -149,6 +149,10 @@ a.shipping-calculator-button {
         max-width: 100%;
     }
 }
+
+body.cm-session-user table.cart:not(.wishlist_table) td.actions button.button[name="update_cart"] {
+    visibility: hidden;
+}
 /*********************************************** Cart - end ***********************************************/
 
 /*********************************************** Checkout ***********************************************/

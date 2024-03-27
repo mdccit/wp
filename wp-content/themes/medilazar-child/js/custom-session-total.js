@@ -1,7 +1,7 @@
 jQuery(document).ready(function($) {
 
 
-        updateMiniCartTotal();
+         updateMiniCartTotal();
    
 
         $(document).on('click', '.quantity-action.plus, .quantity-action.minus', function(e) {
@@ -12,12 +12,10 @@ jQuery(document).ready(function($) {
                     var productId = $(this).closest('tr.woocommerce-cart-form__cart-item').find('.product-remove .remove').data('product_id');
                     var quantityInput = $(this).closest('.quantity').find('.qty');
                     var quantityValue = parseInt(quantityInput.val());
-                    
-                    // Log the product ID and the new quantity
-                    console.log('Product ID:', productId, 'New Quantity:', quantityValue);
                 
                     // Update the quantity input on the page
                     quantityInput.val(quantityValue).trigger('change');
+                    $('button[name="update_cart"]').trigger('click');
                 
                     updateCartItemQuantity(productId,quantityValue);
       
@@ -37,8 +35,7 @@ jQuery(document).ready(function($) {
                     _ajax_nonce: myAjax.nonce,
                 },
                 success: function(response) {
-                    console.log(response); // Handle the response
-                    updateMiniCartTotal();
+                 updateMiniCartTotal();
                 },
                 error: function(error) {
                     console.error(error); // Handle errors
@@ -63,10 +60,8 @@ jQuery(document).ready(function($) {
                         _ajax_nonce: myAjax.nonce,
                         product_id: productId,                    
                     },
-                    success: function(response) {
-                        console.log(response); // Check the console for the success message
+                    success: function(response) {            
                         updateMiniCartTotal();
-                        location.reload();
                     },
                     error: function(error) {
                         console.error(error); // If there's an error, it will show up here
@@ -115,18 +110,12 @@ jQuery(document).ready(function($) {
   
                             var $responseTotal = $(response.data.total);
 
-                            amount = response.data.total;
-
                             var currencySymbol = '';
                             var amount = '';
-                            amount = response.data.total;
-                            console.log('amount ' + amount);
-                            var currencySymbol = $responseTotal.find('.woocommerce-Price-currencySymbol').html();
-
-                            // Extract the amount, assuming it's the text immediately following the currency symbol
-                            var amount = $responseTotal.find('bdi').clone().children().remove().end().text().trim();
-                        
                           
+                            var currencySymbol = $responseTotal.find('.woocommerce-Price-currencySymbol').html();
+                            // Extract the amount, assuming it's the text immediately following the currency symbol
+                            var amount = $responseTotal.find('bdi').clone().children().remove().end().text().trim(); 
                             $('.cart-contents .amount').html('<font style="vertical-align: inherit;"><font style="vertical-align: inherit;">' +currencySymbol + amount + '</font></font>');
                      
                         }
@@ -138,7 +127,4 @@ jQuery(document).ready(function($) {
             }
         } 
     }
-
-
-
 });

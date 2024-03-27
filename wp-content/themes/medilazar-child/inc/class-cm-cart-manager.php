@@ -239,21 +239,23 @@ class Cart_Manager {
     public function calculate_cart_total_for_session($session_id) {
         global $session_manager;
         $current_session_id = $session_manager->get_session_id_from_cookie();
-        if($session_id == $current_session_id){
-            $cart_data = $this->get_cart_data_for_session($session_id);
-            $total = 0;
-            if (is_array($cart_data)) {
-                foreach ($cart_data as $item) {
-                    $product = wc_get_product($item['product_id']);
-                    if ($product) {
-                        $total += $product->get_price() * $item['quantity'];
+        if ($session_manager->is_session_specific_user()) {
+            if($session_id == $current_session_id){
+                $cart_data = $this->get_cart_data_for_session($session_id);
+                $total = 0;
+                if (is_array($cart_data)) {
+                    foreach ($cart_data as $item) {
+                        $product = wc_get_product($item['product_id']);
+                        if ($product) {
+                            $total += $product->get_price() * $item['quantity'];
+                        }
                     }
                 }
-            }
 
-            // $total = WC()->cart->get_cart_total();
-            $formatted_cart_total = wc_price($total);
-            return $formatted_cart_total;
+                // $total = WC()->cart->get_cart_total();
+                $formatted_cart_total = wc_price($total);
+                return $formatted_cart_total;
+            }
         }
       
     }
