@@ -93,17 +93,23 @@ function handle_cm_update_product_from_product_page() {
     check_ajax_referer('update_mini_cart_nonce', 'nonce'); // Check the nonce for security
     $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
     $quantity = isset($_POST['quantity']) ? (int) $_POST['quantity'] : 1;
-    error_log('PRODUCT_IT'.$product_id);
     $session_specific_user = $session_manager->is_session_specific_user();
     if($session_specific_user){
         if ($product_id > 0) {
-            $cart_manager->cm_handle_update_cart_item_quantity_product_page($product_id,$quantity);
-            wp_send_json_success('Product Quantity Updated');
+           $cart_manager->cm_handle_update_cart_item_quantity_product_page($product_id,$quantity);
+           wp_send_json_success(array('message' => __('El producto se ha añadido correctamente a la cesta!', 'medilazar')));
         } else {
             wp_send_json_error('Missing data for Update');
         }
     }
 }
+
+// add_action('wp_loaded', function() {
+//     if (did_action('woocommerce_before_single_product') || did_action('woocommerce_before_shop_loop')) {
+//         wc_clear_notices(); // Clear all notices after they've been displayed
+//     }
+// }, 20); 
+
 
 
 function handle_get_mini_cart_total_for_session() {
@@ -137,7 +143,9 @@ function enqueue_and_localize_cm_script() {
         wp_localize_script('custom-session-total', 'myAjax', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('update_mini_cart_nonce'),
+            'addedToCart' => __('Product successfully added to cart!', 'woocommerce'),
         ));
+  
     }
 }
 
@@ -799,7 +807,7 @@ function cm_login_user_with_url_session_key() {
                     wp_redirect(home_url());
                     exit;
                 }else{
-                    error_log("No SEssion ID Returned");
+                    error_log("No Session ID Returned");
                 }
             }
         } else {
@@ -965,7 +973,6 @@ function custom_mini_cart_total() {
     // Check for session ID and modify $total as necessary
     $session_id  = $session_manager->get_session_id_from_cookie();
 
-    error_log(' Calculating Minicart Total ::: '. $session_id);
         // Assuming you have a function to get the total based on session ID
         $session_total = $cart_manager->calculate_cart_total_for_session($session_id);
         if ( $session_total ) {
@@ -983,3 +990,5 @@ function custom_dashboard_message_with_email() {
         echo '<p>' .__( 'Correo electrónico' , 'medilazar' ). ' : ' . $session_email . '</p>';
     }
 }
+
+

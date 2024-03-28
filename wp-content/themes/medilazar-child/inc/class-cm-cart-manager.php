@@ -17,8 +17,6 @@ class Cart_Manager {
     
     public function cm_handle_add_to_cart($cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data) {
         global $session_manager, $wpdb;
-    
-        error_log('cm_handle_add_to_cart called for product ID: ' . $product_id);
         if ($session_manager->is_session_specific_user()) {
             $table_name = $wpdb->prefix . 'cm_cart_data';
             $session_id = $session_manager->get_current_session_id(); // Retrieves session ID using session key
@@ -117,33 +115,22 @@ class Cart_Manager {
         if ($session_manager->is_session_specific_user()) {
             $session_id = $session_manager->get_session_id_from_cookie();
             $user_id = get_current_user_id();
-            error_log(" set_cart_data_for_session_specific_user  session id : " . $session_id);
 
                 if ($session_id) {
 
-                    error_log(" set_cart_data_for_session_specific_user  s : " . $session_id);
                     $table_name = $wpdb->prefix . 'cm_cart_data';
                     $cart_data_serialized = $wpdb->get_var($wpdb->prepare(
                         "SELECT cart_data FROM $table_name WHERE session_id = %d AND user_id = %d",
                         $session_id,
                         $user_id
                     ));
-                    error_log(" set_cart_data_for_session_specific_user  cart_data_serialized: " .$cart_data_serialized);
-                  
+                      
                     if ($cart_data_serialized !== false && $cart_data_serialized !== null && $cart_data_serialized !== '') {
 
-                        error_log(" set_cart_data_for_session_specific_user   cart data serizlied s: " . $session_id);
-
-                        error_log('Serialized cart data: ' . var_export($cart_data_serialized, true));
-                        $cart_data = maybe_unserialize($cart_data_serialized);
-                        error_log('Unserialized cart data: ' . var_export($cart_data, true));
+                           $cart_data = maybe_unserialize($cart_data_serialized);
 
                         if (is_array($cart_data)) {
-                            error_log('Before adding the cart. Cart contents count: ' . WC()->cart->get_cart_contents_count());
-
                             WC()->session->set('cart', $cart_data);
-
-                            error_log('After adding the cart. Cart contents count: ' . WC()->cart->get_cart_contents_count());
                         }
                     }else{
                          $woocommerce->cart->empty_cart(true);
@@ -270,7 +257,6 @@ class Cart_Manager {
             $session_specific_user = $session_manager->is_session_specific_user();
             
             if ($session_specific_user) {
-                error_log('removeing item');
                 $table_name = $wpdb->prefix . 'cm_cart_data';
                 
                 // Fetch the serialized cart data for the session
@@ -378,18 +364,11 @@ class Cart_Manager {
                 ));
     
                 $cart_data = $serialized_cart_data ? maybe_unserialize($serialized_cart_data) : array();
-
-                error_log(' CART_DATA_SET');
-                error_log(print_r($cart_data, true));
-                error_log(' CART_DATA_OVER');
-
                 $product_exists_in_cart = false;
                 
                 // Check if the product exists in the cart and update its quantity
                 foreach ($cart_data as &$item) {
-                    error_log('PRODUCT_ID_EXIST');
                     if (isset($item['product_id']) && (int) $item['product_id'] === (int) $product_id) {
-                        error_log('PRODUCT_ID_EXIST_TRUE');
                         // Add the new quantity to the current quantity instead of just updating it
                         $item['quantity'] += $new_quantity; // Increment the quantity
                         $product_exists_in_cart = true; // Mark that the product exists

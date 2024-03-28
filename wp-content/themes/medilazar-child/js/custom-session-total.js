@@ -48,6 +48,9 @@ jQuery(document).ready(function($) {
             // Prevent the default form submission if necessary
             if(getSessionIdFromCookie !== null){
                 e.preventDefault();
+
+                // Disable the button
+                $(this).prop('disabled', true).text('Processing...');
     
                 // Capture the quantity value
                 var quantityValue = $('.input-text.qty.text').val();
@@ -63,7 +66,6 @@ jQuery(document).ready(function($) {
         
         function updateCartItemQuantityFromProductPage(productId, newQuantity) {
 
-            console.log('Product ID' + productId + ' Added  Quantity : ' + newQuantity)
             $.ajax({
                 url: myAjax.ajaxurl,
                 type: 'POST',
@@ -74,8 +76,18 @@ jQuery(document).ready(function($) {
                     _ajax_nonce: myAjax.nonce,
                 },
                 success: function(response) {
-                    console.log(response);
-                 updateMiniCartTotal();
+                location.reload();
+
+                updateMiniCartTotal(); 
+                // If the server responded with a success message, display it
+                $('.woocommerce-notices-wrapper').html('<div class="woocommerce-message" role="alert">' + response.data.message+ '</div>');
+
+                $('html, body').animate({
+                    scrollTop: $('.woocommerce-notices-wrapper').offset().top
+                }, 1000);
+
+                
+     
                 },
                 error: function(jqXHR) {
                     var response = JSON.parse(jqXHR.responseText);
