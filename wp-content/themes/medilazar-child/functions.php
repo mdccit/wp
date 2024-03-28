@@ -104,14 +104,6 @@ function handle_cm_update_product_from_product_page() {
     }
 }
 
-// add_action('wp_loaded', function() {
-//     if (did_action('woocommerce_before_single_product') || did_action('woocommerce_before_shop_loop')) {
-//         wc_clear_notices(); // Clear all notices after they've been displayed
-//     }
-// }, 20); 
-
-
-
 function handle_get_mini_cart_total_for_session() {
     global $cart_manager, $session_manager;
     check_ajax_referer('update_mini_cart_nonce', 'nonce'); // Check the nonce for security
