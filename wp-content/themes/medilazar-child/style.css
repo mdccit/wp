@@ -22,6 +22,7 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 /* Account */
 /* Category - Product list */
 /* Home */
+/* Product single page */
 
 :root {
     --primary-color: #0a759d;
@@ -184,3 +185,28 @@ li.product .product-image {
 }
 /*********************************************** Category - Product list - end ***********************************************/
 
+/*********************************************** Product single page ***********************************************/
+.single-product .single_add_to_cart_button i {
+    display: none;
+    position: absolute;
+    animation: rotate 5s linear infinite;
+}
+.single-product .single_add_to_cart_button.adding i {
+    display: block;
+}
+.single-product .single_add_to_cart_button.adding {
+    position: relative;
+}
+.single-product .single_add_to_cart_button.adding::before,
+.single-product .single_add_to_cart_button.adding span {
+    visibility: hidden;
+}
+@keyframes rotate {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+/*********************************************** Product single page - end ***********************************************/

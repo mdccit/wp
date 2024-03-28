@@ -49,8 +49,7 @@ jQuery(document).ready(function($) {
             if(getSessionIdFromCookie !== null){
                 e.preventDefault();
 
-                // Disable the button
-                $(this).prop('disabled', true).text('Processing...');
+                $('.single-product .single_add_to_cart_button').prop('disabled', true).addClass('adding');
     
                 // Capture the quantity value
                 var quantityValue = $('.input-text.qty.text').val();
