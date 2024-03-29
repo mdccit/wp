@@ -107,19 +107,22 @@ function handle_cm_update_product_from_product_page() {
 function handle_get_mini_cart_total_for_session() {
     global $cart_manager, $session_manager;
     check_ajax_referer('update_mini_cart_nonce', 'nonce'); // Check the nonce for security
-    $cart_total = [];
-    $session_id = isset($_POST['session_id']) ? sanitize_text_field($_POST['session_id']) : '';
 
-    // Retrieve the cart total for the session ID
-    $current_session_id = $session_manager->get_session_id_from_cookie();
-  
-            if($session_id == $current_session_id){
-                $cart_total = $cart_manager->calculate_cart_total_for_session($session_id);            
-                wp_send_json_success(array('total' => $cart_total ));
-            }else {
-                wp_send_json_error('Session ID Mismatch');
-            }          
+    $session_specific_user = $session_manager->is_session_specific_user();
+    if($session_specific_user){
+        $cart_total = [];
+        $session_id = isset($_POST['session_id']) ? sanitize_text_field($_POST['session_id']) : '';
+
+        // Retrieve the cart total for the session ID
+        $current_session_id = $session_manager->get_session_id_from_cookie();
     
+                if($session_id == $current_session_id){
+                    $cart_total = $cart_manager->calculate_cart_total_for_session($session_id);            
+                    wp_send_json_success(array('total' => $cart_total ));
+                }else {
+                    wp_send_json_error('Session ID Mismatch');
+                }          
+    }
     wp_die();
 }
 
@@ -152,6 +155,10 @@ function cm_child_enqueue_styles_and_scripts()
 	wp_enqueue_style('child-styles', get_stylesheet_directory_uri() . '/style.css', false, time(), 'all');
 	wp_enqueue_style('cm-elementor-styles', get_stylesheet_directory_uri() . '/css/cm-elementor.css', false, time(), 'all');
 	wp_enqueue_script("si_script", get_stylesheet_directory_uri() . "/js/custom.js", '', time());
+    wp_localize_script('custom', 'cmAjax', array(
+        'ajaxurl' => admin_url('admin-ajax.php'),
+        'nonce' => wp_create_nonce('update_guest_cart_nonce'),
+    ));
 }
 add_action('wp_enqueue_scripts', 'cm_child_enqueue_styles_and_scripts', 110000);
 
@@ -957,21 +964,27 @@ function handle_update_cart_item_quantity() {
 }
 
 
-add_filter('woocommerce_mini_cart_total', 'custom_mini_cart_total');
+add_filter('woocommerce_mini_cart_total', 'cm_mini_cart_total');
 
-
-function custom_mini_cart_total() {
+function cm_mini_cart_total($value) {
     global $cart_manager, $session_manager;
-    // Check for session ID and modify $total as necessary
-    $session_id  = $session_manager->get_session_id_from_cookie();
 
+    $session_specific_user = $session_manager->is_session_specific_user();
+     
+    if ($session_specific_user) {     
+        $session_id = $session_manager->get_session_id_from_cookie();
+     
         // Assuming you have a function to get the total based on session ID
         $session_total = $cart_manager->calculate_cart_total_for_session($session_id);
-        if ( $session_total ) {
-            return $session_total;
+        if ($session_total) {
+            return wc_price($session_total);
         }
-    return $session_total;
+    }
+
+    // Return the original total if not a session-specific user
+    return $value;
 }
+
 
 add_action( 'woocommerce_account_dashboard', 'custom_dashboard_message_with_email' );
 
@@ -984,3 +997,41 @@ function custom_dashboard_message_with_email() {
 }
 
 
+function custom_render_mini_cart_items() {
+    global $wpdb;
+
+    // Assuming $session_id is available and valid for the current user/session
+    $session_id = isset($_COOKIE['session_id_cookie_name']) ? $_COOKIE['session_id_cookie_name'] : 'default_session';
+
+    // Adjust the table name as necessary
+    $table_name = $wpdb->prefix . 'cm_cart_data';
+
+    // Query your custom table for cart items for the current session
+    $cart_items = $wpdb->get_results(
+        $wpdb->prepare(
+            "SELECT * FROM $table_name WHERE session_id = %s",
+            $session_id
+        ),
+        ARRAY_A
+    );
+
+    $items_output = '';
+    foreach ( $cart_items as $cart_item ) {
+        // Decode the cart item data, assuming it's stored as a serialized array or JSON
+        $item_data = maybe_unserialize($cart_item['cart_data']);
+
+        // Start capturing the output into a variable
+        ob_start();
+        ?>
+        <div class="mini-cart-item" data-cart_item_key="<?php echo esc_attr($cart_item['cart_item_key']); ?>">
+            <?php
+            // Display cart item details. Modify as needed based on how your data is stored
+            echo esc_html($item_data['product_name']); // Example: Adjust to match your data structure
+            // Add more item details as needed
+            ?>
+        </div>
+        <?php
+        $items_output .= ob_get_clean();
+    }
+    return $items_output;
+}

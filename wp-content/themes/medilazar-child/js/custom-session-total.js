@@ -102,7 +102,7 @@ jQuery(document).ready(function($) {
         }
 
 
-    $(document).on('click', 'td.product-remove .remove , .remove_from_cart_button ', function(e) {
+    $(document).on('click', 'td.product-remove .remove ', function(e) {
         if(getSessionIdFromCookie !== null){
             e.preventDefault();
 
@@ -121,6 +121,33 @@ jQuery(document).ready(function($) {
                         updateMiniCartTotal();
                         $('button[name="update_cart"]').trigger('click');
                         location.reload();
+                    },
+                    error: function(error) {
+                        console.error(error); // If there's an error, it will show up here
+                    }
+                }); 
+        }
+     });
+
+
+     $(document).on('click', 'li.mini_cart_item .remove_from_cart_button ', function(e) {
+        if(getSessionIdFromCookie !== null){
+            e.preventDefault();
+            var productId = $(this).data('product_id');
+                $.ajax({
+                    url: myAjax.ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'cm_ajax_remove_product_from_cart',
+                        _ajax_nonce: myAjax.nonce,
+                        product_id: productId,                    
+                    },
+                    success: function(response) {   
+                        console.log(response);         
+                       // updateMiniCartTotal();
+                        console.log('mini cart item removed');
+                        // $('button[name="update_cart"]').trigger('click');                      
+                        // location.reload();                       
                     },
                     error: function(error) {
                         console.error(error); // If there's an error, it will show up here
@@ -173,7 +200,6 @@ jQuery(document).ready(function($) {
                             var currencySymbol = $responseTotal.find('.woocommerce-Price-currencySymbol').html();
                             // Extract the amount, assuming it's the text immediately following the currency symbol
                             var amount = $responseTotal.find('bdi').clone().children().remove().end().text().trim(); 
-                            console.log('total : '  + amount);
                             $('.cart-contents .amount').html('<font style="vertical-align: inherit;"><font style="vertical-align: inherit;">' +currencySymbol + amount + '</font></font>');
                      
                         }
