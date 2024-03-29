@@ -55,17 +55,17 @@ function cm_add_body_class( $classes ) {
 add_filter( 'body_class', 'cm_add_body_class' );
 
 function cm_ajax_remove_product_from_cart() {
-
+    
     global $cart_manager , $session_manager;
     $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
- 
+
     $session_specific_user = $session_manager->is_session_specific_user();
     if($session_specific_user){
         if ($product_id > 0) {
             $cart_manager->cm_handle_remove_from_cart($product_id);
-            wp_send_json_success('Product removed');
+                        wp_send_json_success('Product removed');
         } else {
-            wp_send_json_error('Missing data');
+                        wp_send_json_error('Missing data');
         }
     }
 }
@@ -997,41 +997,5 @@ function custom_dashboard_message_with_email() {
 }
 
 
-function custom_render_mini_cart_items() {
-    global $wpdb;
 
-    // Assuming $session_id is available and valid for the current user/session
-    $session_id = isset($_COOKIE['session_id_cookie_name']) ? $_COOKIE['session_id_cookie_name'] : 'default_session';
 
-    // Adjust the table name as necessary
-    $table_name = $wpdb->prefix . 'cm_cart_data';
-
-    // Query your custom table for cart items for the current session
-    $cart_items = $wpdb->get_results(
-        $wpdb->prepare(
-            "SELECT * FROM $table_name WHERE session_id = %s",
-            $session_id
-        ),
-        ARRAY_A
-    );
-
-    $items_output = '';
-    foreach ( $cart_items as $cart_item ) {
-        // Decode the cart item data, assuming it's stored as a serialized array or JSON
-        $item_data = maybe_unserialize($cart_item['cart_data']);
-
-        // Start capturing the output into a variable
-        ob_start();
-        ?>
-        <div class="mini-cart-item" data-cart_item_key="<?php echo esc_attr($cart_item['cart_item_key']); ?>">
-            <?php
-            // Display cart item details. Modify as needed based on how your data is stored
-            echo esc_html($item_data['product_name']); // Example: Adjust to match your data structure
-            // Add more item details as needed
-            ?>
-        </div>
-        <?php
-        $items_output .= ob_get_clean();
-    }
-    return $items_output;
-}

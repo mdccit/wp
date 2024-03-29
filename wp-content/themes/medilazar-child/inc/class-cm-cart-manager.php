@@ -34,6 +34,8 @@ class Cart_Manager {
     
             // Deserialize the existing cart data, if any
             $cart_data = $existing_cart_data_serialized ? unserialize($existing_cart_data_serialized) : [];
+                // Generate a unique cart item key
+            $unique_cart_item_key = md5(uniqid($product_id . '_' . $variation_id . '_', true));
 
             // Flag to check if product already exists in the cart
             $product_exists = false;
@@ -42,7 +44,7 @@ class Cart_Manager {
                 // Check if product ID match
                 if ($item['product_id'] == $product_id) {
                     // Product exists, so update the quantity
-                    $item['quantity'] += 1;
+                    $item['quantity'] += $quantity;
                     $product_exists = true;
                     break; 
                 }
@@ -52,6 +54,7 @@ class Cart_Manager {
             if (!$product_exists) {
                 // Construct the new cart item to add
                 $new_cart_item = array(
+                    'cart_item_key' => $unique_cart_item_key,
                     'product_id' => $product_id,
                     'quantity' => $quantity,
                     'variation_id' => $variation_id,
@@ -289,11 +292,11 @@ class Cart_Manager {
                 }
 
                 // Proceed to remove the item from WooCommerce cart
-                foreach (WC()->cart->get_cart() as $cart_item_key => $cart_item) {
-                    if ($cart_item['product_id'] == $product_id) {
-                        WC()->cart->remove_cart_item($cart_item_key);
-                    }
-                }
+                // foreach (WC()->cart->get_cart() as $cart_item_key => $cart_item) {
+                //     if ($cart_item['product_id'] == $product_id) {
+                //         WC()->cart->remove_cart_item($cart_item_key);
+                //     }
+                // }
             }
         }
     }
@@ -430,7 +433,7 @@ class Cart_Manager {
         }
         return false;
     }
- 
+     
 
     
 }

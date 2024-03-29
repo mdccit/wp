@@ -2,7 +2,7 @@ jQuery(document).ready(function($) {
 
 
         updateMiniCartTotal();
-   
+           
 
         $(document).on('click', '.quantity-action.plus, .quantity-action.minus', function(e) {
 
@@ -130,31 +130,31 @@ jQuery(document).ready(function($) {
      });
 
 
-     $(document).on('click', 'li.mini_cart_item .remove_from_cart_button ', function(e) {
-        if(getSessionIdFromCookie !== null){
-            e.preventDefault();
+     $(document).on('click', 'li.mini_cart_item .remove_from_cart_button', function(e) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (getSessionIdFromCookie !== null) {
             var productId = $(this).data('product_id');
-                $.ajax({
-                    url: myAjax.ajaxurl,
-                    type: 'POST',
-                    data: {
-                        action: 'cm_ajax_remove_product_from_cart',
-                        _ajax_nonce: myAjax.nonce,
-                        product_id: productId,                    
+            var cartItemKey = $(this).data('cart_item_key');
+        
+            $.ajax({
+                url: myAjax.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'cm_ajax_remove_product_from_cart',
+                    _ajax_nonce: myAjax.nonce,
+                    product_id: productId,
+                    cart_item_key: cartItemKey
+                },
+                success: function(response) {
+                    updateMiniCartTotal();
                     },
-                    success: function(response) {   
-                        console.log(response);         
-                       // updateMiniCartTotal();
-                        console.log('mini cart item removed');
-                        // $('button[name="update_cart"]').trigger('click');                      
-                        // location.reload();                       
-                    },
-                    error: function(error) {
-                        console.error(error); // If there's an error, it will show up here
-                    }
-                }); 
+                error: function(error) {
+                    console.error('Error removing mini cart item:', error); // Modified log
+                }
+            });
         }
-     });
+    });
 
 
      $('body').on('ajax_add_to_cart', function() {
@@ -186,6 +186,7 @@ jQuery(document).ready(function($) {
                     method: 'POST',
                     data: {
                         action: 'get_mini_cart_total_for_session',
+                        _ajax_nonce: myAjax.nonce,
                         session_id: session_id,
                         nonce: myAjax.nonce
                     },
@@ -211,4 +212,8 @@ jQuery(document).ready(function($) {
             
         } 
     }
+
+    // }
+    
+    
 });
