@@ -1055,13 +1055,27 @@ function generate_punchout_order_message_cxml($session_id) {
 }
 
 function create_complete_punchout_order_cxml($session_id) {
-    $buyerCookie = "exampleBuyerCookie"; // Obtain or generate the BuyerCookie
+    global $wpdb; // Make sure to globalize $wpdb to use it for database operations
+    $table_name = $wpdb->prefix . 'cm_sessions'; // Assuming 'cm_sessions' is the table name, adjust if necessary
+
+    // Fetch the BuyerCookie for the given session_id from the database
+    $buyerCookie = $wpdb->get_var($wpdb->prepare(
+        "SELECT buyer_cookie FROM $table_name WHERE session_id = %s",
+        $session_id
+    ));
+
+    if (empty($buyerCookie)) {
+        // Handle cases where no BuyerCookie is found, e.g., return an error or use a default value
+        $buyerCookie = "defaultBuyerCookie"; // Example fallback
+    }
+
+    // Generate cart items cXML (assuming this function is implemented elsewhere)
     $cartItemsCxml = generate_punchout_order_message_cxml($session_id);
 
     // Construct the full cXML PunchOutOrderMessage
     $cxml = '<?xml version="1.0" encoding="UTF-8"?>';
     $cxml .= '<!DOCTYPE cXML SYSTEM "http://xml.cxml.org/schemas/cXML/1.2.008/cXML.dtd">';
-    $cxml .= '<cXML payloadID="YourPayloadIDHere" timestamp="YourTimestampHere">';
+    $cxml .= '<cXML payloadID="YourPayloadIDHere" timestamp="' . gmdate('c') . '">'; // Example to use the current timestamp
     $cxml .= '<Header>...</Header>'; // Add your header information here
     $cxml .= '<Message>';
     $cxml .= '<PunchOutOrderMessage>';
@@ -1074,5 +1088,6 @@ function create_complete_punchout_order_cxml($session_id) {
 
     return $cxml;
 }
+
 
 
