@@ -248,7 +248,7 @@ function create_cm_session_table() {
     $table_name = $wpdb->prefix . 'cm_sessions';
     
     // Define current version
-    define('CURRENT_CM_SESSION_TABLE_VERSION', '1.6'); // Update this as you release new versions
+    define('CURRENT_CM_SESSION_TABLE_VERSION', '1.7'); // Update this as you release new versions
 
     // Check if the table already exists
     $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") == $table_name;
@@ -276,10 +276,13 @@ function create_cm_session_table() {
             $wpdb->query("ALTER TABLE $table_name ADD COLUMN session_status VARCHAR(255) NULL;");    
             $wpdb->query("ALTER TABLE $table_name ADD COLUMN buyer_cookie VARCHAR(255) NULL;");      
             $wpdb->query("ALTER TABLE $table_name ADD COLUMN payload_id VARCHAR(255) NULL;");
+            $wpdb->query("ALTER TABLE $table_name ADD COLUMN operation VARCHAR(50) NULL;");
         }
 
-        if ($installed_ver < CURRENT_CM_SESSION_TABLE_VERSION) {     
-            $wpdb->query("ALTER TABLE $table_name ADD COLUMN operation VARCHAR(50) NULL;");
+        if ($installed_ver < CURRENT_CM_SESSION_TABLE_VERSION) {    
+            $wpdb->query("ALTER TABLE $table_name ADD COLUMN `from` VARCHAR(255)  NULL;"); 
+            $wpdb->query("ALTER TABLE $table_name ADD COLUMN `to` VARCHAR(255)  NULL;"); 
+            $wpdb->query("ALTER TABLE $table_name ADD COLUMN request LONGTEXT NULL;");
         }
         // For each new version, add additional conditional blocks here.
 
@@ -569,6 +572,8 @@ function handle_cxml_request($cxml_body) {
     $returnCode = 'Failure';
     $response_message = 'An unexpected error occurred.';
     $loginURL = '';
+    $requestBody = file_get_contents('php://input');
+
 
     try {
     
@@ -583,6 +588,8 @@ function handle_cxml_request($cxml_body) {
         $payloadID = (string)$cxml['payloadID'];
         $buyerCookie = (string)$cxml->Request->PunchOutSetupRequest->BuyerCookie;
         $operation = (string)$cxml->Request->PunchOutSetupRequest->attributes()->operation;
+        $from = (string)$cxml->Header->From->Credential->Identity;
+        $to = (string)$cxml->Header->To->Credential->Identity;
         $version =  (string)$cxml['version'];
         $language = (string) $cxml->attributes('xml', true)->lang;
 
@@ -634,6 +641,9 @@ function handle_cxml_request($cxml_body) {
                                         'buyer_cookie' => $buyerCookie,
                                         'payload_id' => $payloadID,
                                         'operation' => $operation,
+                                        'from' => $from,
+                                        'to' => $to,
+                                        'request' => $requestBody // Storing the whole cXML content
                                     ],
                                     [
                                         '%d', // user_id
@@ -643,7 +653,10 @@ function handle_cxml_request($cxml_body) {
                                         '%s', // expires_at
                                         '%s', // buyer_cookie
                                         '%s', // payload_id
-                                        '%s'  // operation
+                                        '%s',  // operation
+                                        '%s',  // from
+                                        '%s',  // to
+                                        '%s',  // request
                                     ]
                                 );
 
@@ -871,9 +884,6 @@ function cm_login_error_message($message) {
 }
 
 add_filter('login_message', 'cm_login_error_message');
-
-
-
 
 
 /* ////////////////////////////////////////////
