@@ -248,7 +248,7 @@ function create_cm_session_table() {
     $table_name = $wpdb->prefix . 'cm_sessions';
     
     // Define current version
-    define('CURRENT_CM_SESSION_TABLE_VERSION', '1.4'); // Update this as you release new versions
+    define('CURRENT_CM_SESSION_TABLE_VERSION', '1.6'); // Update this as you release new versions
 
     // Check if the table already exists
     $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") == $table_name;
@@ -273,7 +273,13 @@ function create_cm_session_table() {
 
         // Update version and apply changes based on version
         if ($installed_ver < CURRENT_CM_SESSION_TABLE_VERSION) {
-            $wpdb->query("ALTER TABLE $table_name ADD COLUMN session_status VARCHAR(255) NULL;");
+            $wpdb->query("ALTER TABLE $table_name ADD COLUMN session_status VARCHAR(255) NULL;");    
+            $wpdb->query("ALTER TABLE $table_name ADD COLUMN buyer_cookie VARCHAR(255) NULL;");      
+            $wpdb->query("ALTER TABLE $table_name ADD COLUMN payload_id VARCHAR(255) NULL;");
+        }
+
+        if ($installed_ver < CURRENT_CM_SESSION_TABLE_VERSION) {     
+            $wpdb->query("ALTER TABLE $table_name ADD COLUMN operation VARCHAR(50) NULL;");
         }
         // For each new version, add additional conditional blocks here.
 
@@ -575,6 +581,8 @@ function handle_cxml_request($cxml_body) {
         $userEmail = (string)$cxml->Request->PunchOutSetupRequest->Contact->Email;
         $returnURL = (string)$cxml->Request->PunchOutSetupRequest->BrowserFormPost->URL;
         $payloadID = (string)$cxml['payloadID'];
+        $buyerCookie = (string)$cxml->Request->PunchOutSetupRequest->BuyerCookie;
+        $operation = (string)$cxml->Request->PunchOutSetupRequest->attributes()->operation;
         $version =  (string)$cxml['version'];
         $language = (string) $cxml->attributes('xml', true)->lang;
 
@@ -622,14 +630,20 @@ function handle_cxml_request($cxml_body) {
                                         'session_key' => $session_key,
                                         'session_email' => $userEmail, 
                                         'created_at' => current_time('mysql'),
-                                        'expires_at' => date('Y-m-d H:i:s', time() + 60 * 60 * 24)
+                                        'expires_at' => date('Y-m-d H:i:s', time() + 60 * 60 * 24),
+                                        'buyer_cookie' => $buyerCookie,
+                                        'payload_id' => $payloadID,
+                                        'operation' => $operation,
                                     ],
                                     [
                                         '%d', // user_id
                                         '%s', // session_key
                                         '%s', // session_email
                                         '%s', // created_at
-                                        '%s'  // expires_at
+                                        '%s', // expires_at
+                                        '%s', // buyer_cookie
+                                        '%s', // payload_id
+                                        '%s'  // operation
                                     ]
                                 );
 
@@ -997,5 +1011,58 @@ function custom_dashboard_message_with_email() {
 }
 
 
+
+function generate_punchout_order_message_cxml($session_id) {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'cm_cart_data'; // Adjust according to your table structure
+
+    // Retrieve cart items for a given session ID
+    $cart_items = $wpdb->get_results($wpdb->prepare(
+        "SELECT product_id, quantity FROM $table_name WHERE session_id = %s",
+        $session_id
+    ));
+
+    // Initialize the cXML items string
+    $cxmlItems = '';
+
+    foreach ($cart_items as $item) {
+        $product = wc_get_product($item->product_id);
+        if (!$product) continue; // Skip if product not found
+
+        // Construct cXML for each cart item
+        $cxmlItems .= "<ItemIn quantity=\"" . esc_attr($item->quantity) . "\">";
+        $cxmlItems .= "<ItemID><SupplierPartID>" . esc_html($product->get_sku()) . "</SupplierPartID></ItemID>";
+        $cxmlItems .= "<ItemDetail>";
+        $cxmlItems .= "<UnitPrice><Money currency=\"USD\">" . esc_html($product->get_price()) . "</Money></UnitPrice>";
+        $cxmlItems .= "<Description xml:lang=\"en-US\">" . esc_html($product->get_name()) . "</Description>";
+        $cxmlItems .= "<UnitOfMeasure>EA</UnitOfMeasure>";
+        $cxmlItems .= "<Classification domain=\"UNSPSC\">43211501</Classification>"; // Example classification, adjust as necessary
+        $cxmlItems .= "</ItemDetail>";
+        $cxmlItems .= "</ItemIn>";
+    }
+
+    return $cxmlItems;
+}
+
+function create_complete_punchout_order_cxml($session_id) {
+    $buyerCookie = "exampleBuyerCookie"; // Obtain or generate the BuyerCookie
+    $cartItemsCxml = generate_punchout_order_message_cxml($session_id);
+
+    // Construct the full cXML PunchOutOrderMessage
+    $cxml = '<?xml version="1.0" encoding="UTF-8"?>';
+    $cxml .= '<!DOCTYPE cXML SYSTEM "http://xml.cxml.org/schemas/cXML/1.2.008/cXML.dtd">';
+    $cxml .= '<cXML payloadID="YourPayloadIDHere" timestamp="YourTimestampHere">';
+    $cxml .= '<Header>...</Header>'; // Add your header information here
+    $cxml .= '<Message>';
+    $cxml .= '<PunchOutOrderMessage>';
+    $cxml .= '<BuyerCookie>' . esc_html($buyerCookie) . '</BuyerCookie>';
+    $cxml .= '<PunchOutOrderMessageHeader operationAllowed="create">...</PunchOutOrderMessageHeader>';
+    $cxml .= $cartItemsCxml; // Include the cart items cXML
+    $cxml .= '</PunchOutOrderMessage>';
+    $cxml .= '</Message>';
+    $cxml .= '</cXML>';
+
+    return $cxml;
+}
 
 
