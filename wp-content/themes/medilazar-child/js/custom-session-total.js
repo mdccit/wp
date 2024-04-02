@@ -75,17 +75,13 @@ jQuery(document).ready(function($) {
                     _ajax_nonce: myAjax.nonce,
                 },
                 success: function(response) {
-                location.reload();
-
-                updateMiniCartTotal(); 
-                // If the server responded with a success message, display it
-                $('.woocommerce-notices-wrapper').html('<div class="woocommerce-message" role="alert">' + response.data.message+ '</div>');
-
-                $('html, body').animate({
-                    scrollTop: $('.woocommerce-notices-wrapper').offset().top
-                }, 1000);
-
-                
+                    location.reload();
+                    updateMiniCartTotal(); 
+                    // If the server responded with a success message, display it
+                    $('.woocommerce-notices-wrapper').html('<div class="woocommerce-message" role="alert">' + response.data.message+ '</div>');
+                    $('html, body').animate({
+                        scrollTop: $('.woocommerce-notices-wrapper').offset().top
+                    }, 1000);             
      
                 },
                 error: function(jqXHR) {
@@ -213,7 +209,40 @@ jQuery(document).ready(function($) {
         } 
     }
 
-    // }
+   
+    // PUNCHOUT ORDER MESSAGE
+    $(document).on('click', '#sendPunchOutOrder', function(e) {
+        e.preventDefault();
+        if(getSessionIdFromCookie !== null){       
+            var session_id = getSessionIdFromCookie();
+ 
+                $.ajax({
+                    url: myAjax.ajaxurl,
+                    method: 'POST',
+                    data: {
+                        action: 'get_mini_cart_total_for_session',
+                        _ajax_nonce: myAjax.nonce,
+                        session_id: session_id,
+                        nonce: myAjax.nonce
+                    },
+                    success: function(response) {
+                        if (response.success) {   
+                            console.log('PunchOut Order cXML:', response.data);
+                            alert('PunchOut Order Message Created.');                        
+                        }
+                    },
+                    error: function(jqXHR) {
+                        var response = JSON.parse(jqXHR.responseText);
+                        if (response && response.message) {
+                            console.error("Server-side error: " + response.message);
+                        } else {
+                            console.error("AJAX error without a detailed description.");
+                        }
+                    }
+                });
+            
+        } 
+    });
     
     
 });

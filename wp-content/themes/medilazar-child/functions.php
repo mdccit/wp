@@ -248,7 +248,7 @@ function create_cm_session_table() {
     $table_name = $wpdb->prefix . 'cm_sessions';
     
     // Define current version
-    define('CURRENT_CM_SESSION_TABLE_VERSION', '1.7'); // Update this as you release new versions
+    define('CURRENT_CM_SESSION_TABLE_VERSION', '1.8'); // Update this as you release new versions
 
     // Check if the table already exists
     $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") == $table_name;
@@ -283,6 +283,7 @@ function create_cm_session_table() {
             $wpdb->query("ALTER TABLE $table_name ADD COLUMN `from` VARCHAR(255)  NULL;"); 
             $wpdb->query("ALTER TABLE $table_name ADD COLUMN `to` VARCHAR(255)  NULL;"); 
             $wpdb->query("ALTER TABLE $table_name ADD COLUMN request LONGTEXT NULL;");
+            $wpdb->query("ALTER TABLE $table_name ADD COLUMN order_url LONGTEXT NULL;");
         }
         // For each new version, add additional conditional blocks here.
 
@@ -643,7 +644,8 @@ function handle_cxml_request($cxml_body) {
                                         'operation' => $operation,
                                         'from' => $from,
                                         'to' => $to,
-                                        'request' => $requestBody // Storing the whole cXML content
+                                        'request' => $requestBody, // Storing the whole cXML content
+                                        'order_url' => $returnURL,
                                     ],
                                     [
                                         '%d', // user_id
