@@ -1098,10 +1098,21 @@ function create_complete_punchout_order_cxml($session_id) {
 }
 
 
-add_action('woocommerce_review_order_before_submit', 'add_cm_mc_button_checkout_page');
+// Different checkout button for the session specific user
+add_action('init', 'cm_punchout_proceed_to_checkout');
 
-function add_cm_mc_button_checkout_page() {
-    echo '<button id="sendPunchOutOrder" style="margin-right: 10px;margin-bottom:30px">Send Message</button>';
+function cm_punchout_proceed_to_checkout() {
+    global $session_manager;
+    $session_specific_user = $session_manager->is_session_specific_user();
+
+    if($session_specific_user) {
+        remove_action( 'woocommerce_proceed_to_checkout', 'woocommerce_button_proceed_to_checkout', 20 );
+        add_action( 'woocommerce_proceed_to_checkout', 'cm_punchout_button_proceed_to_checkout', 20 );
+    }
+}
+
+function cm_punchout_button_proceed_to_checkout() {
+    wc_get_template( 'cart/cm-punchout-proceed-to-checkout-button.php' );
 }
 
 function cm_punchout_checkout_scripts() {
