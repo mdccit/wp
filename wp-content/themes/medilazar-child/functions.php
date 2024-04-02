@@ -1101,13 +1101,13 @@ function create_complete_punchout_order_cxml($session_id) {
 add_action('woocommerce_review_order_before_submit', 'add_cm_mc_button_checkout_page');
 
 function add_cm_mc_button_checkout_page() {
-    echo '<button id="sendPunchOutOrder" style="margin-right: 10px;">Send PunchOut Order</button>';
+    echo '<button id="sendPunchOutOrder" style="margin-right: 10px;margin-bottom:30px">Send Message</button>';
 }
 
-// function cm_punchout_checkout_scripts() {
-//     wp_enqueue_script('punchout-scripts-js', get_template_directory_uri() . '/js/punchout-scripts-js.js', array('jquery'), null, true);
-//     wp_add_inline_style('woocommerce-general', '#sendPunchOutOrder { display: inline-block; margin-left: 10px; }');
-// }
-// add_action('wp_enqueue_scripts', 'cm_punchout_checkout_scripts');
+function cm_punchout_checkout_scripts() {
+    wp_enqueue_script('punchout-scripts-js', get_stylesheet_directory_uri() . '/js/punchout-scripts-js.js', array('jquery'), null, true);
+    wp_add_inline_style('woocommerce-general', '#sendPunchOutOrder { display: inline-block; margin-left: 10px; }');
+}
+add_action('wp_enqueue_scripts', 'cm_punchout_checkout_scripts');
 
 
