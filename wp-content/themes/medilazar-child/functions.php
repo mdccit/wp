@@ -659,6 +659,7 @@ function handle_cxml_request($cxml_body) {
                                         '%s',  // from
                                         '%s',  // to
                                         '%s',  // request
+                                        '%s',  // order_url
                                     ]
                                 );
 
