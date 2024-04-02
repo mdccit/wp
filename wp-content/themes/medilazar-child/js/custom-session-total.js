@@ -211,16 +211,25 @@ jQuery(document).ready(function($) {
 
    
     // PUNCHOUT ORDER MESSAGE
-    $(document).on('click', '#sendPunchOutOrder', function(e) {
-        e.preventDefault();
-        if(getSessionIdFromCookie !== null){       
-            var session_id = getSessionIdFromCookie();
- 
-                $.ajax({
+    $('.wc-proceed-to-checkout a.checkout-button').on('click', function(e) {
+        e.preventDefault();  
+            if(getSessionIdFromCookie !== null){     
+         
+                create_complete_punchout_order_cxml();
+         
+            }
+    });
+  
+    
+    function create_complete_punchout_order_cxml() {
+
+        var session_id = getSessionIdFromCookie();      
+    
+            $.ajax({
                     url: myAjax.ajaxurl,
                     method: 'POST',
                     data: {
-                        action: 'get_mini_cart_total_for_session',
+                        action: 'create_complete_punchout_order_cxml',
                         _ajax_nonce: myAjax.nonce,
                         session_id: session_id,
                         nonce: myAjax.nonce
@@ -241,8 +250,8 @@ jQuery(document).ready(function($) {
                     }
                 });
             
-        } 
-    });
+        
+    }
     
     
 });

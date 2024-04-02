@@ -1023,8 +1023,26 @@ function custom_dashboard_message_with_email() {
     }
 }
 
+// Different checkout button for the session specific user
+add_action('init', 'cm_punchout_proceed_to_checkout');
+
+function cm_punchout_proceed_to_checkout() {
+    global $session_manager;
+    $session_specific_user = $session_manager->is_session_specific_user();
+
+    if($session_specific_user) {
+        remove_action( 'woocommerce_proceed_to_checkout', 'woocommerce_button_proceed_to_checkout', 20 );
+        add_action( 'woocommerce_proceed_to_checkout', 'cm_punchout_button_proceed_to_checkout', 20 );
+    }
+}
 
 
+function cm_punchout_button_proceed_to_checkout() {
+    wc_get_template( 'cart/cm-punchout-proceed-to-checkout-button.php' );
+}
+
+
+// PUNCHOUT ORDER MESSAGE
 function generate_punchout_order_message_cxml($session_id) {
     global $wpdb;
     $table_name = $wpdb->prefix . 'cm_cart_data'; // Adjust according to your table structure
@@ -1057,15 +1075,23 @@ function generate_punchout_order_message_cxml($session_id) {
     return $cxmlItems;
 }
 
-function create_complete_punchout_order_cxml($session_id) {
-    global $wpdb; // Make sure to globalize $wpdb to use it for database operations
+function create_complete_punchout_order_cxml() {
+    error_log(" this is test");
+
+    check_ajax_referer('update_mini_cart_nonce', 'nonce'); // Check the nonce for security
+    return;
+
+    global $wpdb, $session_manager; // Make sure to globalize $wpdb to use it for database operations
     $table_name = $wpdb->prefix . 'cm_sessions'; // Assuming 'cm_sessions' is the table name, adjust if necessary
+    $session_id = $session_manager->get_session_id_from_cookie();
+
 
     $session_details = $wpdb->get_row($wpdb->prepare(
         "SELECT from_field, to_field, buyer_cookie , payload_id FROM $table_name WHERE session_id = %s",
         $session_id
     ));
 
+    error_log($session_details);
     if (is_null($session_details)) {
         // Handle error: No session found
         return 'Error: No session found.';
@@ -1083,7 +1109,7 @@ function create_complete_punchout_order_cxml($session_id) {
     // Construct the full cXML PunchOutOrderMessage
     $cxml = '<?xml version="1.0" encoding="UTF-8"?>';
     $cxml .= '<!DOCTYPE cXML SYSTEM "http://xml.cxml.org/schemas/cXML/1.2.008/cXML.dtd">';
-    $cxml .= '<cXML payloadID="$payloadID" timestamp="' . gmdate('c') . '">';
+    $cxml .= '<cXML payloadID="' . $payloadID . '" timestamp="' . gmdate('c') . '">';
     $cxml .= "<Header>";
     $cxml .= "<From><Credential domain=\"DUNS\"><Identity>$fromIdentity</Identity></Credential></From>";
     $cxml .= "<To><Credential domain=\"DUNS\"><Identity>$toIdentity</Identity></Credential></To>";
@@ -1097,31 +1123,55 @@ function create_complete_punchout_order_cxml($session_id) {
     $cxml .= '</PunchOutOrderMessage>';
     $cxml .= '</Message>';
     $cxml .= '</cXML>';
-    return $cxml;
+
+    error_log($cxml);
+
+    // return sendPunchOutOrder($cxml);
 }
 
 
-// Different checkout button for the session specific user
-add_action('init', 'cm_punchout_proceed_to_checkout');
+function sendPunchOutOrder($cxmlData)
+{
+   global $wpdb ,$session_manager;
+    $table_name = $wpdb->prefix . 'cm_sessions';
 
-function cm_punchout_proceed_to_checkout() {
-    global $session_manager;
-    $session_specific_user = $session_manager->is_session_specific_user();
+    $session_id = $session_manager->get_session_id_from_cookie();
 
-    if($session_specific_user) {
-        remove_action( 'woocommerce_proceed_to_checkout', 'woocommerce_button_proceed_to_checkout', 20 );
-        add_action( 'woocommerce_proceed_to_checkout', 'cm_punchout_button_proceed_to_checkout', 20 );
+    // Retrieve the order_url for the given session_id from the database
+    $order_url = $wpdb->get_var($wpdb->prepare(
+        "SELECT order_url FROM $table_name WHERE session_id = %s",
+        $session_id
+    ));
+
+    if (!$order_url) {
+        error_log('No order URL found for session_id: ' . $session_id);
+        return false;
+    }
+
+    // URL-encode the cXML data
+    $encodedCxmlData = urlencode($cxmlData);
+  
+    // Set up the request arguments
+    $args = array(
+        'body' => array('oracleCart' => $encodedCxmlData),
+        'timeout' => 45,
+        'redirection' => 5,
+        'httpversion' => '1.0',
+        'blocking' => true,
+        'headers' => array(),
+        'cookies' => array()
+    );
+
+    // Send the POST request
+    $response = wp_remote_post($order_url, $args);
+
+    // Check if the request was successful
+    if (is_wp_error($response)) {
+        // Handle error
+        $error_message = $response->get_error_message();
+        return "Failed to send PunchOutOrderMessage: $error_message";
+    } else {
+        // Handle success
+        return 'PunchOutOrderMessage sent successfully';
     }
 }
-
-function cm_punchout_button_proceed_to_checkout() {
-    wc_get_template( 'cart/cm-punchout-proceed-to-checkout-button.php' );
-}
-
-function cm_punchout_checkout_scripts() {
-    wp_enqueue_script('punchout-scripts-js', get_stylesheet_directory_uri() . '/js/punchout-scripts-js.js', array('jquery'), null, true);
-    wp_add_inline_style('woocommerce-general', '#sendPunchOutOrder { display: inline-block; margin-left: 10px; }');
-}
-add_action('wp_enqueue_scripts', 'cm_punchout_checkout_scripts');
-
-
