@@ -1043,25 +1043,32 @@ function cm_punchout_button_proceed_to_checkout() {
 
 
 // PUNCHOUT ORDER MESSAGE
+
+add_action('wp_ajax_create_complete_punchout_order_cxml', 'create_complete_punchout_order_cxml');
+add_action('wp_ajax_nopriv_create_complete_punchout_order_cxml', 'create_complete_punchout_order_cxml');
+
 function generate_punchout_order_message_cxml($session_id) {
     global $wpdb;
     $table_name = $wpdb->prefix . 'cm_cart_data'; // Adjust according to your table structure
 
-    // Retrieve cart items for a given session ID
-    $cart_items = $wpdb->get_results($wpdb->prepare(
-        "SELECT product_id, quantity FROM $table_name WHERE session_id = %s",
+    // Retrieve the serialized cart data for a given session ID
+    $serialized_cart_data = $wpdb->get_var($wpdb->prepare(
+        "SELECT cart_data FROM $table_name WHERE session_id = %s",
         $session_id
     ));
+
+    // Unserialize the cart data
+    $cart_items = unserialize($serialized_cart_data);
 
     // Initialize the cXML items string
     $cxmlItems = '';
 
     foreach ($cart_items as $item) {
-        $product = wc_get_product($item->product_id);
+        $product = wc_get_product($item['product_id']);
         if (!$product) continue; // Skip if product not found
 
         // Construct cXML for each cart item
-        $cxmlItems .= "<ItemIn quantity=\"" . esc_attr($item->quantity) . "\">";
+        $cxmlItems .= "<ItemIn quantity=\"" . esc_attr($item['quantity']) . "\">";
         $cxmlItems .= "<ItemID><SupplierPartID>" . esc_html($product->get_sku()) . "</SupplierPartID></ItemID>";
         $cxmlItems .= "<ItemDetail>";
         $cxmlItems .= "<UnitPrice><Money currency=\"USD\">" . esc_html($product->get_price()) . "</Money></UnitPrice>";
@@ -1075,11 +1082,11 @@ function generate_punchout_order_message_cxml($session_id) {
     return $cxmlItems;
 }
 
+
 function create_complete_punchout_order_cxml() {
-    error_log(" this is test");
+
 
     check_ajax_referer('update_mini_cart_nonce', 'nonce'); // Check the nonce for security
-    return;
 
     global $wpdb, $session_manager; // Make sure to globalize $wpdb to use it for database operations
     $table_name = $wpdb->prefix . 'cm_sessions'; // Assuming 'cm_sessions' is the table name, adjust if necessary
@@ -1087,19 +1094,18 @@ function create_complete_punchout_order_cxml() {
 
 
     $session_details = $wpdb->get_row($wpdb->prepare(
-        "SELECT from_field, to_field, buyer_cookie , payload_id FROM $table_name WHERE session_id = %s",
+        "SELECT `from`, `to`, buyer_cookie , payload_id FROM $table_name WHERE session_id = %s",
         $session_id
     ));
 
-    error_log($session_details);
     if (is_null($session_details)) {
         // Handle error: No session found
         return 'Error: No session found.';
     }
 
     // Assuming from_field and to_field store DUNS identities
-    $fromIdentity = esc_html($session_details->from_field); // The 'to' value in cm_sessions becomes 'From' in cXML
-    $toIdentity = esc_html($session_details->to_field); // The 'from' value in cm_sessions becomes 'To' in cXML
+    $fromIdentity = esc_html($session_details->from); // The 'to' value in cm_sessions becomes 'From' in cXML
+    $toIdentity = esc_html($session_details->to); // The 'from' value in cm_sessions becomes 'To' in cXML
     $buyerCookie = esc_html($session_details->buyer_cookie);
     $payloadID = esc_html($session_details->payload_id);
 
