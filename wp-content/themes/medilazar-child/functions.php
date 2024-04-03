@@ -1071,9 +1071,9 @@ function generate_punchout_order_message_cxml($session_id) {
         $cxmlItems .= "<ItemIn quantity=\"" . esc_attr($item['quantity']) . "\">";
         $cxmlItems .= "<ItemID><SupplierPartID>" . esc_html($product->get_sku()) . "</SupplierPartID></ItemID>";
         $cxmlItems .= "<ItemDetail>";
-        $cxmlItems .= "<UnitPrice><Money currency=\"USD\">" . esc_html($product->get_price()) . "</Money></UnitPrice>";
-        $cxmlItems .= "<Description xml:lang=\"en-US\">" . esc_html($product->get_name()) . "</Description>";
-        $cxmlItems .= "<UnitOfMeasure>EA</UnitOfMeasure>";
+        $cxmlItems .= "<UnitPrice><Money currency=\"EUR\">" . esc_html($product->get_price()) . "</Money></UnitPrice>";
+        $cxmlItems .= "<Description xml:lang=\"es\">" . esc_html($product->get_name()) . "</Description>";
+        $cxmlItems .= "<UnitOfMeasure>units</UnitOfMeasure>";
         $cxmlItems .= "<Classification domain=\"UNSPSC\">43211501</Classification>"; // Example classification, adjust as necessary
         $cxmlItems .= "</ItemDetail>";
         $cxmlItems .= "</ItemIn>";
@@ -1154,27 +1154,21 @@ function sendPunchOutOrder($cxmlData)
         return false;
     }
 
-   // Convert the cXML data from UTF-8 to ISO-8859-1
-$cxmlDataIso = utf8_decode($cxmlData);
+    // Set up the request arguments
+    $args = array(
+        'body' => array('oracleCart' => $cxmlData),
+        'timeout' => 45,
+        'redirection' => 5,
+        'httpversion' => '1.0',
+        'blocking' => true,
+        'headers' => array(
+            'Content-Type' => 'application/x-www-form-urlencoded; charset=ISO-8859-1'
+        ),
+        'cookies' => array()
+    );
 
-// URL-encode the cXML data
-$encodedCxmlData = urlencode($cxmlDataIso);
-
-// Set up the request arguments
-$args = array(
-    'body' => array('oracleCart' => $encodedCxmlData),
-    'timeout' => 45,
-    'redirection' => 5,
-    'httpversion' => '1.0',
-    'blocking' => true,
-    'headers' => array(
-        'Content-Type' => 'application/x-www-form-urlencoded; charset=ISO-8859-1'
-    ),
-    'cookies' => array()
-);
-
-// Send the POST request
-$response = wp_remote_post($order_url, $args);
+    // Send the POST request
+    $response = wp_remote_post($order_url, $args);
 
 
     // Check if the request was successful
