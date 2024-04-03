@@ -478,7 +478,7 @@ class Cart_Manager {
 
     function sendPunchOutOrder($cxmlData)
     {
-       global $wpdb ,$session_manager;
+        global $wpdb ,$session_manager;
         $table_name = $wpdb->prefix . 'cm_sessions';
     
         $session_id = $session_manager->get_session_id_from_cookie();
@@ -492,7 +492,7 @@ class Cart_Manager {
         $order_url = "https://commercialmedica.requestcatcher.com/test";
     
         if (!$order_url) {
-            error_log('No order URL found for session_id: ' . $session_id);
+            wp_send_json_error('No order URL found for session_id: ' . $session_id);
             return false;
         }
     
@@ -516,11 +516,13 @@ class Cart_Manager {
         // Check if the request was successful
         if (is_wp_error($response)) {
             // Handle error
-            $error_message = $response->get_error_message();
-            return "Failed to send PunchOutOrderMessage: $error_message";
+            $error_message = $response->get_error_message();        
+            wp_send_json_error( "Failed to send PunchOutOrderMessage: $error_message");
+            return;
         } else {
             // Handle success
-            return 'PunchOutOrderMessage sent successfully';
+            wp_send_json_success('PunchOutOrderMessage sent successfully');
+            return;
         }
     }
     

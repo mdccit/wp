@@ -1063,9 +1063,10 @@ function create_complete_punchout_order_cxml() {
     ));
 
     if (is_null($session_details)) {
-        // Handle error: No session found
-        return 'Error: No session found.';
+        wp_send_json_error('No session found');
+        return;
     }
+    
 
     // Assuming from_field and to_field store DUNS identities
     $fromIdentity = esc_html($session_details->from); // The 'to' value in cm_sessions becomes 'From' in cXML

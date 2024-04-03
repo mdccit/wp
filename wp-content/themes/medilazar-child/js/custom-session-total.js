@@ -236,8 +236,7 @@ jQuery(document).ready(function($) {
                     },
                     success: function(response) {
                         if (response.success) {   
-                            console.log('PunchOut Order cXML:', response.data);
-                            alert('PunchOut Order Message Created.');                        
+                            console.log('PunchOut Order cXML:', response.data);                                             
                         }
                     },
                     error: function(jqXHR) {
