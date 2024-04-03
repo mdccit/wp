@@ -435,5 +435,93 @@ class Cart_Manager {
     }
      
 
+
+    //PUNCHOUT ORDER
+
+    function generate_punchout_order_message_cxml() {
+        global $wpdb, $session_manager;
+        $table_name = $wpdb->prefix . 'cm_cart_data'; // Adjust according to your table structure
+    
+        $session_id = $session_manager->get_current_session_id();
+        // Retrieve the serialized cart data for a given session ID
+        $serialized_cart_data = $wpdb->get_var($wpdb->prepare(
+            "SELECT cart_data FROM $table_name WHERE session_id = %s",
+            $session_id
+        ));
+    
+        // Unserialize the cart data
+        $cart_items = unserialize($serialized_cart_data);
+    
+        // Initialize the cXML items string
+        $cxmlItems = '';
+    
+        foreach ($cart_items as $item) {
+            $product = wc_get_product($item['product_id']);
+            if (!$product) continue; 
+    
+            // Construct cXML for each cart item
+            $cxmlItems .= "<ItemIn quantity=\"" . esc_attr($item['quantity']) . "\">";
+            $cxmlItems .= "<ItemID><SupplierPartID>" . esc_html($product->get_sku()) . "</SupplierPartID></ItemID>";
+            $cxmlItems .= "<ItemDetail>";
+            $cxmlItems .= "<UnitPrice><Money currency=\"EUR\">" . esc_html($product->get_price()) . "</Money></UnitPrice>";
+            $cxmlItems .= "<Description xml:lang=\"es-ES\">" . esc_html($product->get_name()) . "</Description>";
+            $cxmlItems .= "<UnitOfMeasure>units</UnitOfMeasure>";
+            $cxmlItems .= "<Classification domain=\"UNSPSC\">43211501</Classification>";
+            $cxmlItems .= "</ItemDetail>";
+            $cxmlItems .= "</ItemIn>";
+        }
+    
+        return $cxmlItems;
+    }
+    
+    
+
+    function sendPunchOutOrder($cxmlData)
+    {
+       global $wpdb ,$session_manager;
+        $table_name = $wpdb->prefix . 'cm_sessions';
+    
+        $session_id = $session_manager->get_session_id_from_cookie();
+    
+        // Retrieve the order_url for the given session_id from the database
+        // $order_url = $wpdb->get_var($wpdb->prepare(
+        //     "SELECT order_url FROM $table_name WHERE session_id = %s",
+        //     $session_id
+        // ));
+    
+        $order_url = "https://commercialmedica.requestcatcher.com/test";
+    
+        if (!$order_url) {
+            error_log('No order URL found for session_id: ' . $session_id);
+            return false;
+        }
+    
+        // Set up the request arguments
+        $args = array(
+            'body' => array('oracleCart' => $cxmlData),
+            'timeout' => 45,
+            'redirection' => 5,
+            'httpversion' => '1.0',
+            'blocking' => true,
+            'headers' => array(
+                'Content-Type' => 'application/x-www-form-urlencoded; charset=ISO-8859-1'
+            ),
+            'cookies' => array()
+        );
+    
+        // Send the POST request
+        $response = wp_remote_post($order_url, $args);
+    
+    
+        // Check if the request was successful
+        if (is_wp_error($response)) {
+            // Handle error
+            $error_message = $response->get_error_message();
+            return "Failed to send PunchOutOrderMessage: $error_message";
+        } else {
+            // Handle success
+            return 'PunchOutOrderMessage sent successfully';
+        }
+    }
     
 }
