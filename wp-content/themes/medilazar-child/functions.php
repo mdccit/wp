@@ -1130,9 +1130,7 @@ function create_complete_punchout_order_cxml() {
     $cxml .= '</Message>';
     $cxml .= '</cXML>';
 
-    error_log($cxml);
-
-    // return sendPunchOutOrder($cxml);
+    return sendPunchOutOrder($cxml);
 }
 
 
@@ -1144,32 +1142,40 @@ function sendPunchOutOrder($cxmlData)
     $session_id = $session_manager->get_session_id_from_cookie();
 
     // Retrieve the order_url for the given session_id from the database
-    $order_url = $wpdb->get_var($wpdb->prepare(
-        "SELECT order_url FROM $table_name WHERE session_id = %s",
-        $session_id
-    ));
+    // $order_url = $wpdb->get_var($wpdb->prepare(
+    //     "SELECT order_url FROM $table_name WHERE session_id = %s",
+    //     $session_id
+    // ));
+
+    $order_url = "https://commercialmedica.requestcatcher.com/test";
 
     if (!$order_url) {
         error_log('No order URL found for session_id: ' . $session_id);
         return false;
     }
 
-    // URL-encode the cXML data
-    $encodedCxmlData = urlencode($cxmlData);
-  
-    // Set up the request arguments
-    $args = array(
-        'body' => array('oracleCart' => $encodedCxmlData),
-        'timeout' => 45,
-        'redirection' => 5,
-        'httpversion' => '1.0',
-        'blocking' => true,
-        'headers' => array(),
-        'cookies' => array()
-    );
+   // Convert the cXML data from UTF-8 to ISO-8859-1
+$cxmlDataIso = utf8_decode($cxmlData);
 
-    // Send the POST request
-    $response = wp_remote_post($order_url, $args);
+// URL-encode the cXML data
+$encodedCxmlData = urlencode($cxmlDataIso);
+
+// Set up the request arguments
+$args = array(
+    'body' => array('oracleCart' => $encodedCxmlData),
+    'timeout' => 45,
+    'redirection' => 5,
+    'httpversion' => '1.0',
+    'blocking' => true,
+    'headers' => array(
+        'Content-Type' => 'application/x-www-form-urlencoded; charset=ISO-8859-1'
+    ),
+    'cookies' => array()
+);
+
+// Send the POST request
+$response = wp_remote_post($order_url, $args);
+
 
     // Check if the request was successful
     if (is_wp_error($response)) {
@@ -1179,5 +1185,17 @@ function sendPunchOutOrder($cxmlData)
     } else {
         // Handle success
         return 'PunchOutOrderMessage sent successfully';
+    }
+}
+
+// Return to ERP button for the session specific user
+add_action('wp_footer', 'cm_render_punchout_return_button');
+
+function cm_render_punchout_return_button() {
+    global $session_manager;
+    $session_specific_user = $session_manager->is_session_specific_user();
+
+    if($session_specific_user) {
+        echo '<a href="#" id="punchout_return"> ' . __('Volver a ERP', 'medilazar') . '</a>';
     }
 }

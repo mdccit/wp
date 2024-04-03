@@ -4,24 +4,27 @@ jQuery(function ($) {
       // Function to get window height
       const windowHeight = () => $(window).height();
   
-      // Function to update the back to top button positions
-      const backToTopButton = $("a.scrollup");
-      const backToTopButtonOrgPos = 20, bottomOffset = 80;
+      // Function to update the bottom buttons positions
+      const bottomButtons = [$("a.scrollup"), $("#punchout_return")];
+      const bottomButtonsnOrgPos = 20, bottomOffset = 80;
   
       function updateButtonPositions() {
         const height = windowHeight();
         var scrollHeight = $(document).height();
         var scrollTop = $(window).scrollTop();
-  
-        if (scrollHeight - (scrollTop + height) <= bottomOffset) {
-            backToTopButton.css({
+
+        bottomButtons.forEach(btn => {
+          if (scrollHeight - (scrollTop + height) <= bottomOffset) {
+            btn.css({
             bottom: bottomOffset + "px"
           });
-        } else {
-          backToTopButton.css({
-            bottom: backToTopButtonOrgPos + "px"
-          });
-        }
+          } else {
+            btn.css({
+              bottom: bottomButtonsnOrgPos + "px"
+            });
+          }
+        });
+        
       }
   
       updateButtonPositions();

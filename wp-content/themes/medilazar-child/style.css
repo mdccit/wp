@@ -23,10 +23,12 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 /* Category - Product list */
 /* Home */
 /* Product single page */
+/* Punchout return button */
 
 :root {
     --primary-color: #0a759d;
     --primary-dark-color: #07536e;
+    --primary-light-color: #6ad7e0;
     --highlight-color: #eb3a7b;
 }
 
@@ -210,3 +212,23 @@ li.product .product-image {
     }
   }
 /*********************************************** Product single page - end ***********************************************/
+
+/*********************************************** Punchout return button ***********************************************/
+#punchout_return {
+    position: fixed;
+    bottom: 20px;
+    right: 89px;
+    z-index: 99999;
+    padding: 0.5rem 1.5rem;
+    height: 55px;
+    border-radius: 50px;
+    color: #fff;
+    transition: all 0.5s ease;
+    background: var(--primary-light-color);
+    display: flex;
+    align-items: center;
+}
+#punchout_return:hover {
+    background: var(--primary-dark-color);
+}
+/*********************************************** Punchout return button - end ***********************************************/
