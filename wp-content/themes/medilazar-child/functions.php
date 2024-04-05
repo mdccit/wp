@@ -1139,10 +1139,30 @@ add_action('rest_api_init', function () {
     ));
 });
 
-function create_wc_order_from_cxml($cxml_content) {
+function create_wc_order_from_cxml(WP_REST_Request $request) {
     // Load the cXML content
+    $cxml_content = $request->get_body();
+
+    if (empty($cxml_content)) {
+        return new WP_Error('cxml_error', 'No cXML content provided', array('status' => 400));
+    }
+
     $cxml = simplexml_load_string($cxml_content);
-    if (!$cxml) return;
+    if (!$cxml) {
+        return new WP_Error('cxml_error', 'Failed to parse cXML content', array('status' => 400));
+    }
+
+    if (!$cxml || !isset($cxml->Request->OrderRequest)) {
+        wp_send_json_error('Invalid cXML structure');
+        return;
+    }
+
+
+    $shipTo = $cxml->Request->OrderRequest->OrderRequestHeader->ShipTo->Address;
+    if (empty($shipTo) || empty($shipTo->PostalAddress->Street) || empty($shipTo->PostalAddress->City)) {
+        wp_send_json_error('Incomplete shipping address');
+        return;
+    }
 
     // Assuming you have a function to match SupplierPartID with WooCommerce Product ID
     $find_product_id_by_supplier_part_id = function($supplierPartId) {
