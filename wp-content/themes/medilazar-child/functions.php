@@ -1109,3 +1109,85 @@ function cm_render_punchout_return_button() {
         echo '<a href="#" id="punchout_return"> ' . __('Volver a ERP', 'medilazar') . '</a>';
     }
 }
+
+
+add_filter('woocommerce_package_rates', 'set_free_shipping_for_session_users', 10, 2);
+
+function set_free_shipping_for_session_users($rates, $package) {
+    global $session_manager;
+    $session_specific_user = $session_manager->is_session_specific_user();
+
+    if($session_specific_user) {
+        foreach ($rates as $rate_key => $rate) {
+            // Assuming 'free_shipping' is the method_id for your free shipping method.
+            // Adjust this as necessary based on your setup.
+            if ('free_shipping' !== $rate->method_id) {
+                unset($rates[$rate_key]);
+            }
+        }
+    }
+
+    return $rates;
+}
+
+
+
+add_action('rest_api_init', function () {
+    register_rest_route('comercialmedica/v1', '/punchout_order_request', array(
+        'methods' => 'POST',
+        'callback' => 'create_wc_order_from_cxml',
+    ));
+});
+
+function create_wc_order_from_cxml($cxml_content) {
+    // Load the cXML content
+    $cxml = simplexml_load_string($cxml_content);
+    if (!$cxml) return;
+
+    // Assuming you have a function to match SupplierPartID with WooCommerce Product ID
+    $find_product_id_by_supplier_part_id = function($supplierPartId) {
+        // Implement lookup logic here
+        return wc_get_product_id_by_sku($supplierPartId); // Example: Lookup by SKU
+    };
+
+    // Create a new order
+    $order = wc_create_order();
+
+    // Parse and add item(s)
+    foreach ($cxml->Request->OrderRequest->ItemOut as $itemOut) {
+        $product_id = $find_product_id_by_supplier_part_id((string)$itemOut->ItemID->SupplierPartID);
+        $quantity = (int)$itemOut['quantity'];
+        $product = wc_get_product($product_id);
+
+        if ($product) {
+            $order->add_product($product, $quantity);
+        }
+    }
+
+    // Set shipping and billing addresses
+    $shipTo = $cxml->Request->OrderRequest->OrderRequestHeader->ShipTo->Address;
+    $address = [
+        'first_name' => (string)$shipTo->Name,
+        'address_1' => (string)$shipTo->PostalAddress->Street,
+        'city' => (string)$shipTo->PostalAddress->City,
+        'state' => (string)$shipTo->PostalAddress->State,
+        'postcode' => (string)$shipTo->PostalAddress->PostalCode,
+        'country' => (string)$shipTo->PostalAddress->Country,
+        'email' => (string)$shipTo->Email,
+        'phone' => (string)$shipTo->Phone->TelephoneNumber->Number
+    ];
+
+    $order->set_address($address, 'billing');
+    $order->set_address($address, 'shipping');
+
+    // Assuming shipping is free and no additional calculations are needed
+
+    // Set order status
+    $order->set_status('pending', 'Order created programmatically from cXML', true);
+
+    // Save the order
+    $order->save();
+
+    return $order->get_id();
+}
+
