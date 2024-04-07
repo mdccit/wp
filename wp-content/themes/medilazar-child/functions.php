@@ -1158,11 +1158,11 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     }
 
 
-    $shipTo = $cxml->Request->OrderRequest->OrderRequestHeader->ShipTo->Address;
-    if (empty($shipTo) || empty($shipTo->PostalAddress->Street) || empty($shipTo->PostalAddress->City)) {
-        wp_send_json_error('Incomplete shipping address');
-        return;
-    }
+    // $shipTo = $cxml->Request->OrderRequest->OrderRequestHeader->ShipTo->Address;
+    // if (empty($shipTo) || empty($shipTo->PostalAddress->Street) || empty($shipTo->PostalAddress->City)) {
+    //     wp_send_json_error('Incomplete shipping address');
+    //     return;
+    // }
 
     // Assuming you have a function to match SupplierPartID with WooCommerce Product ID
     $find_product_id_by_supplier_part_id = function($supplierPartId) {
@@ -1173,11 +1173,33 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     // Create a new order
     $order = wc_create_order();
 
+    // Process Extrinsic elements from OrderRequestHeader
+    foreach ($cxml->Request->OrderRequest->OrderRequestHeader->Extrinsic as $extrinsic) {
+        $name = (string)$extrinsic['name'];
+        $value = (string)$extrinsic;
+        $order->update_meta_data('_order_extrinsic_' . $name, $value);
+    }
+
     // Parse and add item(s)
     foreach ($cxml->Request->OrderRequest->ItemOut as $itemOut) {
-        $product_id = $find_product_id_by_supplier_part_id((string)$itemOut->ItemID->SupplierPartID);
+      //  $product_id = $find_product_id_by_supplier_part_id((string)$itemOut->ItemID->SupplierPartID);
         $quantity = (int)$itemOut['quantity'];
-        $product = wc_get_product($product_id);
+        error_log(' Product ID : '.(string)$itemOut->ItemID->SupplierPartID .' Quantity: '. $quantity .'');
+        $product = wc_get_product((string)$itemOut->ItemID->SupplierPartID);
+
+        $requestedDeliveryDate = (string)$itemOut['requestedDeliveryDate'];
+        
+        // If there is a requestedDeliveryDate, add it as order meta
+        if (!empty($requestedDeliveryDate)) {
+            $order->update_meta_data('_requested_delivery_date', $requestedDeliveryDate);
+        }
+
+            // Process Extrinsic elements for each ItemOut
+            foreach ($itemOut->ItemDetail->Extrinsic as $extrinsic) {
+                $name = (string)$extrinsic['name'];
+                $value = (string)$extrinsic;  
+                $order->update_meta_data('_item_extrinsic_' . $name, $value);
+            }
 
         if ($product) {
             $order->add_product($product, $quantity);
@@ -1204,6 +1226,8 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
 
     // Set order status
     $order->set_status('pending', 'Order created programmatically from cXML', true);
+
+    $order->calculate_totals();
 
     // Save the order
     $order->save();
