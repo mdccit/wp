@@ -526,4 +526,28 @@ class Cart_Manager {
         }
     }
     
+    function insert_order_request_to_db($order_data, $order_id, $order_type, $type, $sender_identity, $order_date) {
+
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'cm_order_requests';
+    
+        // Serialize or prepare your order data as needed
+        $serialized_order_data = maybe_serialize($order_data);
+    
+        $wpdb->insert(
+            $table_name,
+            array(
+                'order_date' => $order_date,
+                'order_data' => $serialized_order_data, 
+                'order_id' => $order_id,
+                'order_type' => $order_type,
+                'type' => $type,
+                'sender_identity' => $sender_identity,
+                'created_at' => current_time('mysql', 1), // UTC time
+            )
+        );
+    
+        // Optional: Return the inserted record's ID
+        return $wpdb->insert_id;
+    }
 }

@@ -1132,6 +1132,36 @@ function set_free_shipping_for_session_users($rates, $package) {
 
 
 
+function create_cm_order_requests_table() {
+    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+    global $wpdb;
+    
+    $table_name = $wpdb->prefix . 'cm_order_requests';
+    $charset_collate = $wpdb->get_charset_collate();
+
+    // Define the SQL for table creation/alteration
+    $sql = "CREATE TABLE $table_name (
+        id mediumint(9) NOT NULL AUTO_INCREMENT,
+        order_data longtext NOT NULL,
+        order_date varchar(255) DEFAULT '' NOT NULL,
+        order_id varchar(255) DEFAULT '' NOT NULL,
+        order_type varchar(255) DEFAULT '' NOT NULL,
+        type varchar(255) DEFAULT '' NOT NULL,
+        sender_identity varchar(255) DEFAULT '' NOT NULL,
+        created_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        PRIMARY KEY  (id)
+    ) $charset_collate;";
+
+    // Use dbDelta to create or alter the table as necessary
+    dbDelta($sql);
+}
+
+    add_action( 'after_setup_theme', 'create_cm_order_requests_table' );
+
+
+
+
+
 add_action('rest_api_init', function () {
     register_rest_route('comercialmedica/v1', '/punchout_order_request', array(
         'methods' => 'POST',
@@ -1140,6 +1170,8 @@ add_action('rest_api_init', function () {
 });
 
 function create_wc_order_from_cxml(WP_REST_Request $request) {
+
+    global $cart_manager;
     // Load the cXML content
     $cxml_content = $request->get_body();
 
@@ -1157,6 +1189,15 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
         return;
     }
 
+    $order_date = (string) $cxml->Request->OrderRequest->OrderRequestHeader['orderDate'];
+    $order_id = (string) $cxml->Request->OrderRequest->OrderRequestHeader['orderID'];
+    $order_type = (string) $cxml->Request->OrderRequest->OrderRequestHeader['orderType'];
+    $type = (string) $cxml->Request->OrderRequest->OrderRequestHeader['type'];
+    $sender_identity = (string) $cxml->Header->Sender->Credential->Identity;
+
+
+    $cart_manager->insert_order_request_to_db($cxml_content, $order_id, $order_type, $type, $sender_identity, $order_date);
+   
 
     // $shipTo = $cxml->Request->OrderRequest->OrderRequestHeader->ShipTo->Address;
     // if (empty($shipTo) || empty($shipTo->PostalAddress->Street) || empty($shipTo->PostalAddress->City)) {
