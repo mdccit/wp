@@ -461,12 +461,15 @@ class Cart_Manager {
     
             // Construct cXML for each cart item
             $cxmlItems .= "<ItemIn quantity=\"" . esc_attr($item['quantity']) . "\">";
-            $cxmlItems .= "<ItemID><SupplierPartID>" . esc_html($product->get_sku()) . "</SupplierPartID></ItemID>";
+            $cxmlItems .= "<ItemID><SupplierPartID>" . esc_html($product->get_sku()) . "</SupplierPartID>";
+            $cxmlItems .= "<SupplierPartAuxiliaryID/></ItemID>";
             $cxmlItems .= "<ItemDetail>";
             $cxmlItems .= "<UnitPrice><Money currency=\"EUR\">" . esc_html($product->get_price()) . "</Money></UnitPrice>";
             $cxmlItems .= "<Description xml:lang=\"es-ES\">" . esc_html($product->get_name()) . "</Description>";
-            $cxmlItems .= "<UnitOfMeasure>units</UnitOfMeasure>";
-            $cxmlItems .= "<Classification domain=\"UNSPSC\">43211501</Classification>";
+            $cxmlItems .= "<UnitOfMeasure>UNIT</UnitOfMeasure>";
+            $cxmlItems .= "<Classification domain=\"UNSPSC\"></Classification>";
+            $cxmlItems .= "<ManufacturerPartID/>";
+            $cxmlItems .= "<ManufacturerName/>";
             $cxmlItems .= "</ItemDetail>";
             $cxmlItems .= "</ItemIn>";
         }
