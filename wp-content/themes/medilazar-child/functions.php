@@ -1,6 +1,7 @@
 <?php
 require_once get_stylesheet_directory() . '/inc/class-cm-session-manager.php';
 require_once get_stylesheet_directory() . '/inc/class-cm-cart-manager.php';
+require_once get_stylesheet_directory() . '/inc/class-cm-wc-gateway-manual.php';
 
 
 $session_manager = new \CM\Session_Manager();
@@ -1252,10 +1253,12 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
  
     $order->set_address($shippingAddress, 'shipping');
 
+    $order->update_meta_data('_shipping_email', $shipTo->email);
+
     $billTo = $cxml->Request->OrderRequest->OrderRequestHeader->BillTo->Address;
 
     $billingAddress = $cart_manager->set_order_address_from_cxml($billTo);
-    
+
     $order->set_address($billingAddress, 'billing');
     // Assuming shipping is free and no additional calculations are needed
 
@@ -1270,3 +1273,20 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     return $order->get_id();
 }
 
+function display_shipping_email_in_order_admin($order){
+    $shipping_email = $order->get_meta('_shipping_email');
+    if (!empty($shipping_email)) {
+        echo '<p><strong>' . __('Email Address') . ':</strong> ' . esc_html($shipping_email) . '</p>';
+    }
+}
+add_action('woocommerce_admin_order_data_after_shipping_address', 'display_shipping_email_in_order_admin', 10, 1);
+
+
+/**
+ * Add the gateway to WooCommerce.
+ */
+function add_cm_wc_gateway_manual($methods) {
+    $methods[] = 'CM_WC_Gateway_Manual'; // Your class name
+    return $methods;
+}
+add_filter('woocommerce_payment_gateways', 'add_cm_wc_gateway_manual');
