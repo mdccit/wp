@@ -553,4 +553,37 @@ class Cart_Manager {
         // Optional: Return the inserted record's ID
         return $wpdb->insert_id;
     }
+
+
+    function set_order_address_from_cxml($addressElement) {
+        $streets = [];
+        foreach ($addressElement->PostalAddress->Street as $street) {
+            $streets[] = (string)$street;
+        }
+        
+        // Combine street address lines
+        $address_1 = isset($streets[0]) ? $streets[0] : '';
+        $address_2 = isset($streets[1]) ? $streets[1] : '';
+    
+        if (count($streets) > 2) {
+            $address_2 .= ' ' . implode(', ', array_slice($streets, 2));
+        }
+
+        $phoneNumber = (string)$addressElement->Phone->TelephoneNumber->Number;       
+    
+        $Address = [
+            'first_name' => (string)$addressElement->Name,
+            'address_1' => $address_1,
+            'address_2' => $address_2,
+            'city' => (string)$addressElement->PostalAddress->City,
+            'state' => (string)$addressElement->PostalAddress->State,
+            'postcode' => (string)$addressElement->PostalAddress->PostalCode,
+            'country' => (string)$addressElement->PostalAddress->Country->isoCountryCode,
+            'email' => (string)$addressElement->Email,
+            'phone' => $phoneNumber
+        ];
+        
+        return $Address;
+    }
+    
 }

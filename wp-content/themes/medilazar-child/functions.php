@@ -1248,50 +1248,14 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
 
     // Set shipping and billing addresses
     $shipTo = $cxml->Request->OrderRequest->OrderRequestHeader->ShipTo->Address;
-    $address = [
-        'first_name' => (string)$shipTo->Name,
-        'address_1' => (string)$shipTo->PostalAddress->Street,
-        'city' => (string)$shipTo->PostalAddress->City,
-        'state' => (string)$shipTo->PostalAddress->State,
-        'postcode' => (string)$shipTo->PostalAddress->PostalCode,
-        'country' => (string)$shipTo->PostalAddress->Country,
-        'email' => (string)$shipTo->Email,
-        'phone' => (string)$shipTo->Phone->TelephoneNumber->Number
-    ];
-
-  
-    $order->set_address($address, 'shipping');
+    $shippingAddress = $cart_manager->set_order_address_from_cxml($shipTo);
+ 
+    $order->set_address($shippingAddress, 'shipping');
 
     $billTo = $cxml->Request->OrderRequest->OrderRequestHeader->BillTo->Address;
 
-    $streets = [];
-    foreach ($billTo->PostalAddress->Street as $street) {
-        $streets[] = (string)$street;
-    }
-
-    // Split the streets into address_1 and address_2 if there are multiple lines
-    $address_1 = isset($streets[0]) ? $streets[0] : '';
-    $address_2 = isset($streets[1]) ? $streets[1] : '';
-
-    // If there are more than 2 street lines, append them to address_2
-    if (count($streets) > 2) {
-        for ($i = 2; $i < count($streets); $i++) {
-            $address_2 .= ", " . $streets[$i]; // Concatenate additional streets with a comma
-        }
-    }
-
-    $billingAddress = [
-        'first_name' => (string)$billTo->Name,
-        'address_1' => (string)$address_1,
-        'address_2' => (string)$address_2,
-        'city' => (string)$billTo->PostalAddress->City,
-        'state' => (string)$billTo->PostalAddress->State,
-        'postcode' => (string)$billTo->PostalAddress->PostalCode,
-        'country' => (string)$billTo->PostalAddress->Country,
-        'email' => (string)$billTo->Email,
-        'phone' => (string)$billTo->Phone->TelephoneNumber->Number
-    ];
-
+    $billingAddress = $cart_manager->set_order_address_from_cxml($billTo);
+    
     $order->set_address($billingAddress, 'billing');
     // Assuming shipping is free and no additional calculations are needed
 
