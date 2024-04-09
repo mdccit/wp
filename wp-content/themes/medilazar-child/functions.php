@@ -1096,6 +1096,7 @@ function create_complete_punchout_order_cxml() {
     $cxml .= '</cXML>';
 
     return $cart_manager->sendPunchOutOrder($cxml);
+    // wp_logout();
 }
 
 // Return to ERP button for the session specific user
@@ -1156,9 +1157,7 @@ function create_cm_order_requests_table() {
     dbDelta($sql);
 }
 
-    add_action( 'after_setup_theme', 'create_cm_order_requests_table' );
-
-
+add_action( 'after_setup_theme', 'create_cm_order_requests_table' );
 
 
 
@@ -1260,9 +1259,40 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
         'phone' => (string)$shipTo->Phone->TelephoneNumber->Number
     ];
 
-    $order->set_address($address, 'billing');
+  
     $order->set_address($address, 'shipping');
 
+    $billTo = $cxml->Request->OrderRequest->OrderRequestHeader->BillTo->Address;
+
+    $streets = [];
+    foreach ($billTo->PostalAddress->Street as $street) {
+        $streets[] = (string)$street;
+    }
+
+    // Split the streets into address_1 and address_2 if there are multiple lines
+    $address_1 = isset($streets[0]) ? $streets[0] : '';
+    $address_2 = isset($streets[1]) ? $streets[1] : '';
+
+    // If there are more than 2 street lines, append them to address_2
+    if (count($streets) > 2) {
+        for ($i = 2; $i < count($streets); $i++) {
+            $address_2 .= ", " . $streets[$i]; // Concatenate additional streets with a comma
+        }
+    }
+
+    $billingAddress = [
+        'first_name' => (string)$billTo->Name,
+        'address_1' => (string)$address_1,
+        'address_2' => (string)$address_2,
+        'city' => (string)$billTo->PostalAddress->City,
+        'state' => (string)$billTo->PostalAddress->State,
+        'postcode' => (string)$billTo->PostalAddress->PostalCode,
+        'country' => (string)$billTo->PostalAddress->Country,
+        'email' => (string)$billTo->Email,
+        'phone' => (string)$billTo->Phone->TelephoneNumber->Number
+    ];
+
+    $order->set_address($billingAddress, 'billing');
     // Assuming shipping is free and no additional calculations are needed
 
     // Set order status
