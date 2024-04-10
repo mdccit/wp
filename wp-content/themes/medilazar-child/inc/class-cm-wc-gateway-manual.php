@@ -73,8 +73,8 @@ class CM_WC_Gateway_Manual extends WC_Payment_Gateway {
         // Reduce stock levels
         wc_reduce_stock_levels($order_id);
 
-        $order->update_status('processing', 'Order payment completed via CM Manual Payment Gateway.');
-        
+        $order->update_status('processing', esc_html__('Order payment completed via CM Manual Payment Gateway.', 'medilazar'));
+
         // Return thankyou redirect
         return array(
             'result'   => 'success',

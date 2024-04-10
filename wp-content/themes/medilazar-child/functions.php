@@ -1209,14 +1209,17 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
         return;
     }
 
-    $order_date = (string) $cxml->Request->OrderRequest->OrderRequestHeader['orderDate'];
-    $order_id = (string) $cxml->Request->OrderRequest->OrderRequestHeader['orderID'];
-    $order_type = (string) $cxml->Request->OrderRequest->OrderRequestHeader['orderType'];
-    $type = (string) $cxml->Request->OrderRequest->OrderRequestHeader['type'];
-    $sender_identity = (string) $cxml->Header->Sender->Credential->Identity;
+    $orderDate = (string) $cxml->Request->OrderRequest->OrderRequestHeader['orderDate'];
+    $orderID = (string) $cxml->Request->OrderRequest->OrderRequestHeader['orderID'];
+    $orderType = (string) $cxml->Request->OrderRequest->OrderRequestHeader['orderType'];
+    $Type = (string) $cxml->Request->OrderRequest->OrderRequestHeader['type'];
+    $senderIdentity = (string) $cxml->Header->Sender->Credential->Identity;
+    $totalAmount = (string) $cxml->Request->OrderRequest->OrderRequestHeader->Total->Money;
+    $currency = $cxml->Request->OrderRequest->OrderRequestHeader->Total->Money['currency'];
+    $cxmlOrderID = (string) $cxml->Request->OrderRequest->OrderRequestHeader['orderID'];
 
 
-    $cart_manager->insert_order_request_to_db($cxml_content, $order_id, $order_type, $type, $sender_identity, $order_date);
+    $cart_manager->insert_order_request_to_db($cxml_content, $orderID, $orderType, $Type, $senderIdentity, $orderDate);
    
 
     // $shipTo = $cxml->Request->OrderRequest->OrderRequestHeader->ShipTo->Address;
@@ -1225,26 +1228,27 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     //     return;
     // }
 
-    // Assuming you have a function to match SupplierPartID with WooCommerce Product ID
-    $find_product_id_by_supplier_part_id = function($supplierPartId) {
-        // Implement lookup logic here
-        return wc_get_product_id_by_sku($supplierPartId); // Example: Lookup by SKU
-    };
+        // Create a new order
+        $order = wc_create_order();
 
-    // Create a new order
-    $order = wc_create_order();
+        // Process Extrinsic elements from OrderRequestHeader
+        foreach ($cxml->Request->OrderRequest->OrderRequestHeader->Extrinsic as $extrinsic) {
+            $name = (string)$extrinsic['name'];
+            $value = (string)$extrinsic;
+            $order->update_meta_data('_order_extrinsic_' . $name, $value);
+        }
 
-    // Process Extrinsic elements from OrderRequestHeader
-    foreach ($cxml->Request->OrderRequest->OrderRequestHeader->Extrinsic as $extrinsic) {
-        $name = (string)$extrinsic['name'];
-        $value = (string)$extrinsic;
-        $order->update_meta_data('_order_extrinsic_' . $name, $value);
-    }
+        // Get the user object based on the username
+        $user = get_user_by('login', $senderIdentity);
 
-    $senderIdentity = (string) $cxml->Header->Sender->Credential->Identity;
-    $totalAmount = (string) $cxml->Request->OrderRequest->OrderRequestHeader->Total->Money;
-    $currency = $cxml->Request->OrderRequest->OrderRequestHeader->Total->Money['currency'];
-    $cxmlOrderID = (string) $cxml->Request->OrderRequest->OrderRequestHeader['orderID'];
+        if (!$user) {
+            // Handle the case where the user does not exist
+            return new WP_Error('user_error', 'User not found', array('status' => 400));
+        }
+
+         // Set the customer for the order
+    $order->set_customer_id($user->ID);
+    
 
     $order_manager->update_order_meta_from_cxml($order, $senderIdentity, $totalAmount, $currency, $cxmlOrderID);
 
@@ -1252,7 +1256,6 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
 
     // Parse and add item(s)
     foreach ($cxml->Request->OrderRequest->ItemOut as $itemOut) {
-      //  $product_id = $find_product_id_by_supplier_part_id((string)$itemOut->ItemID->SupplierPartID);
         $quantity = (int)$itemOut['quantity'];     
         $requestedDeliveryDate = (string)$itemOut['requestedDeliveryDate'];
         $unitPrice = (float)$itemOut->ItemDetail->UnitPrice->Money;
@@ -1268,7 +1271,8 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
 
             // If there is a requestedDeliveryDate, add it as order meta
             if (!empty($requestedDeliveryDate)) {
-                $order->update_meta_data('_requested_delivery_date', $requestedDeliveryDate);
+                $deliveryDate = (string)$requestedDeliveryDate;
+                $order->update_meta_data('_requested_delivery_date', $deliveryDate);
             }
 
             // Process Extrinsic elements for each ItemOut
@@ -1285,27 +1289,31 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     $order->calculate_totals();
 
 
-   // Set shipping and billing addresses
+   // Set shipping address
     $shipTo = $cxml->Request->OrderRequest->OrderRequestHeader->ShipTo->Address;
     $shippingAddress = $cart_manager->set_order_address_from_cxml($shipTo);
  
     $order->set_address($shippingAddress, 'shipping');
 
-    $order->update_meta_data('_shipping_email', $shipTo->email);
+    $order->update_meta_data('_shipping_email',(string) $shipTo->email);
 
     $billTo = $cxml->Request->OrderRequest->OrderRequestHeader->BillTo->Address;
 
     $billingAddress = $cart_manager->set_order_address_from_cxml($billTo);
 
+     // Set billing address
     $order->set_address($billingAddress, 'billing');
     // Assuming shipping is free and no additional calculations are needed   
+
+   
 
     $order->set_payment_method('cm_manual');  
     $manual_payment_gateway = new CM_WC_Gateway_Manual();
    
     // Process payment and update order status
-    $payment_result = $manual_payment_gateway->process_payment($order->get_id()); 
+    $manual_payment_gateway->process_payment($order->get_id()); 
 
+    error_log($order->get_total());
     $order->save();
     
 

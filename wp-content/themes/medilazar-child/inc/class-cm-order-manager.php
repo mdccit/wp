@@ -14,13 +14,17 @@ class Order_Manager {
 
     function update_order_meta_from_cxml($order, $senderIdentity, $totalAmount, $currency, $cxmlOrderID) {
         if (!empty($senderIdentity)) {
-            $order->update_meta_data('_sender_identity', $senderIdentity);
+            $value = (string) $senderIdentity;
+            $order->update_meta_data('_sender_identity', $value);
         }
         if (!empty($totalAmount) && !empty($currency)) {
-            $order->update_meta_data('_total_amount', $totalAmount . ' ' . $currency);
+            $total = (string) $totalAmount;
+            $orderCurrency = (string) $currency;
+            $order->update_meta_data('_total_amount', $total . ' ' . $orderCurrency);
         }
         if (!empty($cxmlOrderID)) {
-            $order->update_meta_data('_cxml_order_id', $cxmlOrderID);
+            $requestOrderID = (string) $cxmlOrderID;
+            $order->update_meta_data('_cxml_order_id', $requestOrderID);
         }
     
         // Save changes
