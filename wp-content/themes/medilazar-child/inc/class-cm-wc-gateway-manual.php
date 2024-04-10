@@ -18,7 +18,7 @@ class CM_WC_Gateway_Manual extends WC_Payment_Gateway {
         $this->icon               = ''; // URL of the icon that will be displayed on checkout page near your gateway name
         $this->has_fields         = false; // In case you need a custom credit card form
         $this->method_title       = 'CM Manual Payment';
-        $this->method_description = 'Description of the custom manual payment method';
+        $this->method_description = ' Commercialmedica manual payment method';
 
         // Load the settings.
         $this->init_form_fields();
@@ -48,7 +48,7 @@ class CM_WC_Gateway_Manual extends WC_Payment_Gateway {
                 'title'       => 'Title',
                 'type'        => 'text',
                 'description' => 'This controls the title which the user sees during checkout.',
-                'default'     => 'Manual Payment',
+                'default'     => 'CM Manual Payment',
                 'desc_tip'    => true,
             ),
             'description' => array(

@@ -2,10 +2,12 @@
 require_once get_stylesheet_directory() . '/inc/class-cm-session-manager.php';
 require_once get_stylesheet_directory() . '/inc/class-cm-cart-manager.php';
 require_once get_stylesheet_directory() . '/inc/class-cm-wc-gateway-manual.php';
+require_once get_stylesheet_directory() . '/inc/class-cm-order-manager.php';
 
 
 $session_manager = new \CM\Session_Manager();
 $cart_manager = new \CM\Cart_Manager($session_manager);
+$order_manager = new \CM\Order_Manager($order_manager);
 
 // Register AJAX action for logged-in users
 add_action('wp_ajax_cm_ajax_remove_product_from_cart', 'cm_ajax_remove_product_from_cart');
@@ -1161,6 +1163,24 @@ function create_cm_order_requests_table() {
 add_action( 'after_setup_theme', 'create_cm_order_requests_table' );
 
 
+function display_shipping_email_in_order_admin($order){
+    $shipping_email = $order->get_meta('_shipping_email');
+    if (!empty($shipping_email)) {
+        echo '<p><strong>' . __('Email Address') . ':</strong> ' . esc_html($shipping_email) . '</p>';
+    }
+}
+add_action('woocommerce_admin_order_data_after_shipping_address', 'display_shipping_email_in_order_admin', 10, 1);
+
+
+/**
+ * Add the gateway to WooCommerce.
+ */
+function add_cm_wc_gateway_manual($methods) {
+    $methods[] = 'CM_WC_Gateway_Manual'; // Your class name
+    return $methods;
+}
+add_filter('woocommerce_payment_gateways', 'add_cm_wc_gateway_manual');
+
 
 add_action('rest_api_init', function () {
     register_rest_route('comercialmedica/v1', '/punchout_order_request', array(
@@ -1171,7 +1191,7 @@ add_action('rest_api_init', function () {
 
 function create_wc_order_from_cxml(WP_REST_Request $request) {
 
-    global $cart_manager;
+    global $cart_manager, $order_manager;
     // Load the cXML content
     $cxml_content = $request->get_body();
 
@@ -1263,7 +1283,19 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     // Assuming shipping is free and no additional calculations are needed
 
     // Set order status
-    $order->set_status('pending', 'Order created programmatically from cXML', true);
+    $order->set_status('pending', 'Order created manually from cXML', true);
+
+    $order->set_payment_method('cm_manual');
+
+    $senderIdentity = (string) $cxml->Header->Sender->Credential->Identity;
+    $totalAmount = (string) $cxml->Request->OrderRequest->OrderRequestHeader->Total->Money;
+    $currency = $cxml->Request->OrderRequest->OrderRequestHeader->Total->Money['currency'];
+    $cxmlOrderID = (string) $cxml->Request->OrderRequest->OrderRequestHeader['orderID'];
+
+
+    $order_manager->update_order_meta_from_cxml($order, $senderIdentity, $totalAmount, $currency, $cxmlOrderID);
+
+    $order->update_status('processing', 'Order payment completed via CM Manual Payment Gateway.');
 
     $order->calculate_totals();
 
@@ -1273,20 +1305,3 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     return $order->get_id();
 }
 
-function display_shipping_email_in_order_admin($order){
-    $shipping_email = $order->get_meta('_shipping_email');
-    if (!empty($shipping_email)) {
-        echo '<p><strong>' . __('Email Address') . ':</strong> ' . esc_html($shipping_email) . '</p>';
-    }
-}
-add_action('woocommerce_admin_order_data_after_shipping_address', 'display_shipping_email_in_order_admin', 10, 1);
-
-
-/**
- * Add the gateway to WooCommerce.
- */
-function add_cm_wc_gateway_manual($methods) {
-    $methods[] = 'CM_WC_Gateway_Manual'; // Your class name
-    return $methods;
-}
-add_filter('woocommerce_payment_gateways', 'add_cm_wc_gateway_manual');
