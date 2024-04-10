@@ -7,7 +7,7 @@ require_once get_stylesheet_directory() . '/inc/class-cm-order-manager.php';
 
 $session_manager = new \CM\Session_Manager();
 $cart_manager = new \CM\Cart_Manager($session_manager);
-$order_manager = new \CM\Order_Manager($order_manager);
+$order_manager = new \CM\Order_Manager($session_manager);
 
 // Register AJAX action for logged-in users
 add_action('wp_ajax_cm_ajax_remove_product_from_cart', 'cm_ajax_remove_product_from_cart');
@@ -1241,19 +1241,27 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
         $order->update_meta_data('_order_extrinsic_' . $name, $value);
     }
 
+    $order_total = 0;
+    $order_subtotal = 0;
+
     // Parse and add item(s)
     foreach ($cxml->Request->OrderRequest->ItemOut as $itemOut) {
       //  $product_id = $find_product_id_by_supplier_part_id((string)$itemOut->ItemID->SupplierPartID);
-        $quantity = (int)$itemOut['quantity'];
-        error_log(' Product ID : '.(string)$itemOut->ItemID->SupplierPartID .' Quantity: '. $quantity .'');
-        $product = wc_get_product((string)$itemOut->ItemID->SupplierPartID);
-
+        $quantity = (int)$itemOut['quantity'];     
         $requestedDeliveryDate = (string)$itemOut['requestedDeliveryDate'];
+        $unitPrice = (float)$itemOut->ItemDetail->UnitPrice->Money;
+        $line_total = $quantity * $unitPrice;
         
-        // If there is a requestedDeliveryDate, add it as order meta
-        if (!empty($requestedDeliveryDate)) {
-            $order->update_meta_data('_requested_delivery_date', $requestedDeliveryDate);
+        $product_id = wc_get_product_id_by_sku((string)$itemOut->ItemID->SupplierPartID);
+        $product = wc_get_product($product_id);
+        if ($product) {
+            $order->add_product($product, $quantity, array('subtotal' => $unitPrice, 'total' => $line_total));
         }
+
+            // If there is a requestedDeliveryDate, add it as order meta
+            if (!empty($requestedDeliveryDate)) {
+                $order->update_meta_data('_requested_delivery_date', $requestedDeliveryDate);
+            }
 
             // Process Extrinsic elements for each ItemOut
             foreach ($itemOut->ItemDetail->Extrinsic as $extrinsic) {
@@ -1262,9 +1270,7 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
                 $order->update_meta_data('_item_extrinsic_' . $name, $value);
             }
 
-        if ($product) {
-            $order->add_product($product, $quantity);
-        }
+         
     }
 
     // Set shipping and billing addresses
