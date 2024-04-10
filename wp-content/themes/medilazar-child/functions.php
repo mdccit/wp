@@ -1242,7 +1242,6 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     }
 
     $order_total = 0;
-    $order_subtotal = 0;
 
     // Parse and add item(s)
     foreach ($cxml->Request->OrderRequest->ItemOut as $itemOut) {
@@ -1252,6 +1251,8 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
         $unitPrice = (float)$itemOut->ItemDetail->UnitPrice->Money;
         $line_total = $quantity * $unitPrice;
         
+        $order_total += $line_total;
+
         $product_id = wc_get_product_id_by_sku((string)$itemOut->ItemID->SupplierPartID);
         $product = wc_get_product($product_id);
         if ($product) {
@@ -1268,10 +1269,13 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
                 $name = (string)$extrinsic['name'];
                 $value = (string)$extrinsic;  
                 $order->update_meta_data('_item_extrinsic_' . $name, $value);
-            }
-
-         
+            }         
     }
+
+    // Set the calculated order total 
+    $order->set_total($order_total);
+    $order->calculate_totals();
+
 
     // Set shipping and billing addresses
     $shipTo = $cxml->Request->OrderRequest->OrderRequestHeader->ShipTo->Address;
@@ -1288,6 +1292,8 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     $order->set_address($billingAddress, 'billing');
     // Assuming shipping is free and no additional calculations are needed
 
+   // $order->calculate_totals();
+
     // Set order status
     $order->set_status('pending', 'Order created manually from cXML', true);
 
@@ -1302,8 +1308,6 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     $order_manager->update_order_meta_from_cxml($order, $senderIdentity, $totalAmount, $currency, $cxmlOrderID);
 
     $order->update_status('processing', 'Order payment completed via CM Manual Payment Gateway.');
-
-    $order->calculate_totals();
 
     // Save the order
     $order->save();
