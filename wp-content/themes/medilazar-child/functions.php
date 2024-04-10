@@ -1241,6 +1241,13 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
         $order->update_meta_data('_order_extrinsic_' . $name, $value);
     }
 
+    $senderIdentity = (string) $cxml->Header->Sender->Credential->Identity;
+    $totalAmount = (string) $cxml->Request->OrderRequest->OrderRequestHeader->Total->Money;
+    $currency = $cxml->Request->OrderRequest->OrderRequestHeader->Total->Money['currency'];
+    $cxmlOrderID = (string) $cxml->Request->OrderRequest->OrderRequestHeader['orderID'];
+
+    $order_manager->update_order_meta_from_cxml($order, $senderIdentity, $totalAmount, $currency, $cxmlOrderID);
+
     $order_total = 0;
 
     // Parse and add item(s)
@@ -1273,11 +1280,12 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     }
 
     // Set the calculated order total 
-    $order->set_total($order_total);
+    // $order->set_total($order_total);  
+    $order->calculate_taxes();
     $order->calculate_totals();
 
 
-    // Set shipping and billing addresses
+   // Set shipping and billing addresses
     $shipTo = $cxml->Request->OrderRequest->OrderRequestHeader->ShipTo->Address;
     $shippingAddress = $cart_manager->set_order_address_from_cxml($shipTo);
  
@@ -1290,30 +1298,45 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     $billingAddress = $cart_manager->set_order_address_from_cxml($billTo);
 
     $order->set_address($billingAddress, 'billing');
-    // Assuming shipping is free and no additional calculations are needed
-
-    $senderIdentity = (string) $cxml->Header->Sender->Credential->Identity;
-    $totalAmount = (string) $cxml->Request->OrderRequest->OrderRequestHeader->Total->Money;
-    $currency = $cxml->Request->OrderRequest->OrderRequestHeader->Total->Money['currency'];
-    $cxmlOrderID = (string) $cxml->Request->OrderRequest->OrderRequestHeader['orderID'];
-
-    $order_manager->update_order_meta_from_cxml($order, $senderIdentity, $totalAmount, $currency, $cxmlOrderID);
+    // Assuming shipping is free and no additional calculations are needed   
 
     $order->set_payment_method('cm_manual');  
     $manual_payment_gateway = new CM_WC_Gateway_Manual();
-
+   
     // Process payment and update order status
-    $payment_result = $manual_payment_gateway->process_payment($order->get_id());
+    $payment_result = $manual_payment_gateway->process_payment($order->get_id()); 
 
-
-    error_log('Before updating status to processing');
-    $order->update_status('processing', 'Order payment completed via CM Manual Payment Gateway.');
-    error_log('After updating status to processing: ' . $order->get_status());
     $order->save();
-    error_log('After saving order: ' . $order->get_status());
     
 
     return $order->get_id();
 }
 
 
+// add_action('woocommerce_order_calculate_totals', 'set_custom_order_total_with_tax', 10, 2);
+
+// function set_custom_order_total_with_tax($and_taxes, $order) {
+//     if ($order->get_payment_method() === 'cm_manual') {
+//         $desired_total = 100; // Example value, replace with your dynamic total
+
+//         $difference = $desired_total - $order->get_total();
+
+//         if ($difference != 0) {
+//             $item_fee = new WC_Order_Item_Fee();
+
+//             $item_fee->set_name($difference > 0 ? 'Adjustment Fee' : 'Discount');
+//             $item_fee->set_amount($difference);
+//             $item_fee->set_total($difference);
+
+//             // Set the tax class for the fee (e.g., 'standard' for the standard tax rate)
+//             // Make sure the tax class matches one of your configured tax classes in WooCommerce
+//             $item_fee->set_tax_class('standard');
+
+//             $order->add_item($item_fee);
+
+//             // Recalculate taxes and totals
+//             $order->calculate_taxes();
+//             $order->calculate_totals();
+//         }
+//     }
+// }
