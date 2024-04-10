@@ -60,4 +60,32 @@ class CM_WC_Gateway_Manual extends WC_Payment_Gateway {
             ),
         );
     }
+
+    /**
+     * Process the payment and return the result.
+     *
+     * @param int $order_id
+     * @return array
+     */
+    public function process_payment($order_id) {
+        $order = wc_get_order($order_id);
+
+        // Perform necessary actions here, such as validating manual payment details.
+
+        // Mark as processing (or completed, depending on the situation).
+        // Note: 'processing' is used for orders that require payment before shipping,
+        // and 'completed' for orders that do not require payment.
+        $order->update_status('processing', 'Order payment completed via CM Manual Payment Gateway.');
+
+        // Reduce stock levels
+        wc_reduce_stock_levels($order_id);
+
+        // Return thankyou redirect
+        return array(
+            'result'   => 'success',
+            'redirect' => $this->get_return_url($order),
+        );
+    }
+
+    
 }

@@ -1292,26 +1292,28 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     $order->set_address($billingAddress, 'billing');
     // Assuming shipping is free and no additional calculations are needed
 
-   // $order->calculate_totals();
-
-    // Set order status
-    $order->set_status('pending', 'Order created manually from cXML', true);
-
-    $order->set_payment_method('cm_manual');
-
     $senderIdentity = (string) $cxml->Header->Sender->Credential->Identity;
     $totalAmount = (string) $cxml->Request->OrderRequest->OrderRequestHeader->Total->Money;
     $currency = $cxml->Request->OrderRequest->OrderRequestHeader->Total->Money['currency'];
     $cxmlOrderID = (string) $cxml->Request->OrderRequest->OrderRequestHeader['orderID'];
 
-
     $order_manager->update_order_meta_from_cxml($order, $senderIdentity, $totalAmount, $currency, $cxmlOrderID);
 
-    $order->update_status('processing', 'Order payment completed via CM Manual Payment Gateway.');
+    $order->set_payment_method('cm_manual');  
+    $manual_payment_gateway = new CM_WC_Gateway_Manual();
 
-    // Save the order
+    // Process payment and update order status
+    $payment_result = $manual_payment_gateway->process_payment($order->get_id());
+
+
+    error_log('Before updating status to processing');
+    $order->update_status('processing', 'Order payment completed via CM Manual Payment Gateway.');
+    error_log('After updating status to processing: ' . $order->get_status());
     $order->save();
+    error_log('After saving order: ' . $order->get_status());
+    
 
     return $order->get_id();
 }
+
 
