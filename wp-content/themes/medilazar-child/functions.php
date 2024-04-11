@@ -1314,8 +1314,7 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     $manual_payment_gateway->process_payment($order->get_id()); 
 
     error_log($order->get_total());
-    $order->save();
-    
+    $order->save();    
 
     return $order->get_id();
 }
