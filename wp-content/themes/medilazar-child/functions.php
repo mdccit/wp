@@ -148,6 +148,11 @@ function enqueue_and_localize_cm_script() {
             'nonce' => wp_create_nonce('update_mini_cart_nonce'),
             'addedToCart' => __('Product successfully added to cart!', 'woocommerce'),
         ));
+
+        wp_localize_script('punchout', 'myAjax', array(
+            'ajaxurl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('punchout_order_nonce'),
+        ));
   
     }
 }
@@ -1347,7 +1352,7 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
 
 function handle_logout_user_and_redirect() {
     global $session_manager;
-    check_ajax_referer('update_mini_cart_nonce', 'nonce'); // Check the nonce for security
+    check_ajax_referer('punchout_order_nonce', 'nonce'); // Check the nonce for security
     if ($session_manager->is_session_specific_user()) {
         setcookie('cm_session_key', '', time() - 3600, '/');
         setcookie('cm_session_id', '', time() - 3600, '/');

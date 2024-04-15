@@ -15,17 +15,16 @@ jQuery(document).ready(function($) {
    
     // PUNCHOUT ORDER MESSAGE
     $('#punchout_return').on('click', function(e) {
-        e.preventDefault();  
-        var session_id = getSessionIdFromSessionCookie();   
+            var session_id = getSessionIdFromSessionCookie();   
             e.preventDefault();
             jQuery.ajax({
                 url: myAjax.ajaxurl, // Ensure myAjax.ajaxurl is defined somewhere in your PHP using wp_localize_script
                 _ajax_nonce: myAjax.nonce,
                 session_id: session_id,
-                nonce: myAjax.nonce,
                 method: 'POST',
                 data: {
-                    action: 'logout_user_and_redirect'
+                    action: 'logout_user_and_redirect',
+                    nonce: myAjax.nonce,
                 },
                 success: function (response) {
                     if (response.success) {
