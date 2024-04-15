@@ -203,40 +203,6 @@ jQuery(document).ready(function($) {
             
         } 
     }
-   
-    // PUNCHOUT ORDER MESSAGE
-    $('.wc-proceed-to-checkout a.checkout-button').on('click', function(e) {
-        e.preventDefault();  
-            if(getSessionIdFromCookie !== null){         
-                create_complete_punchout_order_cxml();         
-            }
-    });
-    
-    function create_complete_punchout_order_cxml() {
-
-        var session_id = getSessionIdFromCookie();      
-    
-            $.ajax({
-                    url: myAjax.ajaxurl,
-                    method: 'POST',
-                    data: {
-                        action: 'create_complete_punchout_order_cxml',
-                        _ajax_nonce: myAjax.nonce,
-                        session_id: session_id,
-                    },
-                    dataType: 'json',
-
-                    success: function(response) {   
-                        console.log(response);         
-                        window.location.href = response.data.redirect_url;   
-                    },
-                    error: function (jqXHR, textStatus, errorThrown) {
-                        console.error('AJAX error:', textStatus, errorThrown);
-                    }
-            });
-                   
-    }
-
-   
+     
     
 });

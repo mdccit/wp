@@ -1070,7 +1070,7 @@ add_action('wp_ajax_nopriv_create_complete_punchout_order_cxml', 'create_complet
 function create_complete_punchout_order_cxml() {
 
 
-    check_ajax_referer('update_mini_cart_nonce', 'nonce'); // Check the nonce for security
+    check_ajax_referer('punchout_order_nonce', 'nonce'); // Check the nonce for security
 
     global $wpdb, $session_manager, $cart_manager; // Make sure to globalize $wpdb to use it for database operations
     $table_name = $wpdb->prefix . 'cm_sessions'; // Assuming 'cm_sessions' is the table name, adjust if necessary
