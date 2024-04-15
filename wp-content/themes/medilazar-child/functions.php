@@ -139,6 +139,8 @@ function enqueue_and_localize_cm_script() {
     $session_specific_user = $session_manager->is_session_specific_user();
     if($session_specific_user){
         wp_enqueue_script('custom-session-total', get_stylesheet_directory_uri() . '/js/custom-session-total.js', array('jquery'), null, true);
+        wp_enqueue_script('punchout', get_stylesheet_directory_uri() . '/js/punchout.js', array('jquery'), null, true);
+        wp_script_add_data('punchout', 'defer', true);
         // Enqueue js-cookie
         wp_enqueue_script('js-cookie', get_template_directory_uri() . '/js/js.cookie.min.js', array(), '3.0.1', true);
         wp_localize_script('custom-session-total', 'myAjax', array(
@@ -1344,12 +1346,29 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
 
 
 function handle_logout_user_and_redirect() {
-    error_log('received');
-    // Check for user logged in
-    if (is_user_logged_in()) {
-        wp_logout(); // Logout the user
+    global $session_manager;
+    check_ajax_referer('update_mini_cart_nonce', 'nonce'); // Check the nonce for security
+    if ($session_manager->is_session_specific_user()) {
+        setcookie('cm_session_key', '', time() - 3600, '/');
+        setcookie('cm_session_id', '', time() - 3600, '/');
+        wp_logout();
+
+        $response = array(
+            'success' => true,
+            'data' => array(
+                'redirect_url' => home_url()
+            )
+        );
+    } else {
+        error_log('User not logged in.');
+        $response = array(
+            'success' => false,
+            'data' => array(
+                'message' => 'User not logged in.'
+            )
+        );
     }
-    
-    $redirect_url = home_url(); // Redirect to the home page, change this as needed
-    wp_send_json_success(['redirect_url' => $redirect_url]);
+
+    echo json_encode($response);
+    exit;
 }

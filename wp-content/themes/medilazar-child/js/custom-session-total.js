@@ -242,40 +242,41 @@ jQuery(document).ready(function($) {
                    
     }
 
-    // document.addEventListener('DOMContentLoaded', function () {
-    //     var logoutButton = document.getElementById('punchout_return');
-    //     console.log('button clicked');
+    document.addEventListener('DOMContentLoaded', function () {
+        alert('button clicked');
     
-    //     if (logoutButton) {
+        var logoutButton = document.getElementById('punchout_return');
+    
+        if (logoutButton) {
 
-    //         console.log('button available');
-    //         var session_id = getSessionIdFromCookie();   
-    //         logoutButton.addEventListener('click', function (e) {
-    //             e.preventDefault();
-    //             jQuery.ajax({
-    //                 url: myAjax.ajaxurl, // Ensure myAjax.ajaxurl is defined somewhere in your PHP using wp_localize_script
-    //                 _ajax_nonce: myAjax.nonce,
-    //                 session_id: session_id,
-    //                 nonce: myAjax.nonce,
-    //                 method: 'POST',
-    //                 data: {
-    //                     action: 'logout_user_and_redirect'
-    //                 },
-    //                 success: function (response) {
-    //                     if (response.success) {
-    //                         window.location.href = response.data.redirect_url; // Redirect URL passed from server
-    //                     } else {
-    //                         console.error('Failed to log out:', response.data.message);
-    //                     }
-    //                 },
-    //                 error: function () {
-    //                     console.error('AJAX error');
-    //                 }
-    //             });
-    //         });
-    //     }else {
-    //         console.error('Logout button not found');
-    //     }
-    // });    
+            console.log('button available');
+            var session_id = getSessionIdFromCookie();   
+            logoutButton.addEventListener('click', function (e) {
+                e.preventDefault();
+                // jQuery.ajax({
+                //     url: myAjax.ajaxurl, // Ensure myAjax.ajaxurl is defined somewhere in your PHP using wp_localize_script
+                //     _ajax_nonce: myAjax.nonce,
+                //     session_id: session_id,
+                //     nonce: myAjax.nonce,
+                //     method: 'POST',
+                //     data: {
+                //         action: 'logout_user_and_redirect'
+                //     },
+                //     success: function (response) {
+                //         if (response.success) {
+                //             window.location.href = response.data.redirect_url; // Redirect URL passed from server
+                //         } else {
+                //             console.error('Failed to log out:', response.data.message);
+                //         }
+                //     },
+                //     error: function () {
+                //         console.error('AJAX error');
+                //     }
+                // });
+            });
+        }else {
+            console.error('Logout button not found');
+        }
+    });    
     
 });

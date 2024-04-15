@@ -258,4 +258,11 @@ function get_current_session_id() {
     return $session_id;
 }
 
+
+    function set_session_expire(){
+        if($this->is_session_specific_user()){
+            
+        }
+    }
+
 }
