@@ -139,26 +139,33 @@ function enqueue_and_localize_cm_script() {
     $session_specific_user = $session_manager->is_session_specific_user();
     if($session_specific_user){
         wp_enqueue_script('custom-session-total', get_stylesheet_directory_uri() . '/js/custom-session-total.js', array('jquery'), null, true);
-        wp_enqueue_script('punchout', get_stylesheet_directory_uri() . '/js/punchout.js', array('jquery'), null, true);
-        wp_script_add_data('punchout', 'defer', true);
         // Enqueue js-cookie
         wp_enqueue_script('js-cookie', get_template_directory_uri() . '/js/js.cookie.min.js', array(), '3.0.1', true);
         wp_localize_script('custom-session-total', 'myAjax', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('update_mini_cart_nonce'),
             'addedToCart' => __('Product successfully added to cart!', 'woocommerce'),
-        ));
-
-        wp_localize_script('punchout', 'myAjax', array(
-            'ajaxurl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('punchout_order_nonce'),
-        ));
-  
+        ));      
     }
 }
 
 add_action('wp_enqueue_scripts', 'enqueue_and_localize_cm_script');
 
+
+function enqueue_cm_punchout_script() {
+
+    global  $session_manager;  
+ 
+        wp_enqueue_script('punchout', get_stylesheet_directory_uri() . '/js/punchout.js', array('jquery'), null, true);
+        wp_script_add_data('punchout', 'defer', true);
+
+        wp_localize_script('punchout', 'punchoutAjax', array(
+            'ajaxurl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('punchout_order_nonce'),
+        ));  
+}
+
+add_action('wp_enqueue_scripts', 'enqueue_cm_punchout_script');
 
 /**
  * Enqueue script and styles for child theme
@@ -1124,11 +1131,26 @@ function create_complete_punchout_order_cxml() {
     wp_logout();
     
     if (!headers_sent()) {
-        wp_send_json_success(['redirect_url' => home_url()]);
+        $redirect_url = home_url().'/session-expirada/';
+        $response = array(
+            'success' => true,
+            'data' => array(
+                'redirect_url' => $redirect_url ? $redirect_url : home_url() ,
+                'message' => 'Return successful.'
+            )
+        );
     } else {
         error_log('Headers already sent');
-        wp_send_json_error('Logout successful, but redirect failed');
+        $response = array(
+            'success' => false,
+            'data' => array(               
+                'message' => 'Failed.'
+            )
+        );
     }
+
+    echo json_encode($response);
+    exit;
     
 }
 
@@ -1351,17 +1373,29 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
 
 
 function handle_logout_user_and_redirect() {
-    global $session_manager;
+    global $wpdb, $session_manager;
     check_ajax_referer('punchout_order_nonce', 'nonce'); // Check the nonce for security
     if ($session_manager->is_session_specific_user()) {
+
+        $session_id = $session_manager->get_current_session_id(); // Make sure this method exists and correctly retrieves the session ID
+
+        // Query the database to get the order_url
+        $order_url = $wpdb->get_var($wpdb->prepare(
+            "SELECT order_url FROM {$wpdb->prefix}cm_sessions WHERE session_id = %d",
+            $session_id
+        ));
+
+
         setcookie('cm_session_key', '', time() - 3600, '/');
         setcookie('cm_session_id', '', time() - 3600, '/');
         wp_logout();
 
+
         $response = array(
             'success' => true,
             'data' => array(
-                'redirect_url' => home_url()
+                'redirect_url' => $order_url ? $order_url : home_url() ,
+                'message' => 'Return successful.'
             )
         );
     } else {

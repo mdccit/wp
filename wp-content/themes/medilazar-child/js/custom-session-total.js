@@ -225,58 +225,19 @@ jQuery(document).ready(function($) {
                         session_id: session_id,
                         nonce: myAjax.nonce
                     },
-                    success: function(response) {
-                        if (response.success) {   
-                            console.log('PunchOut Order cXML:', response.data);                                             
-                        }
-                    },
-                    error: function(jqXHR) {
-                        var response = JSON.parse(jqXHR.responseText);
-                        if (response && response.message) {
-                            console.error("Server-side error: " + response.message);
-                        } else {
-                            console.error("AJAX error without a detailed description.");
-                        }
+                    dataType: 'json',
+
+                    success: function(response) {   
+                        console.log(response);         
+                      
+                    },               
+                    error: function (jqXHR, textStatus, errorThrown) {
+                        console.error('AJAX error:', textStatus, errorThrown);
                     }
             });
                    
     }
 
-    document.addEventListener('DOMContentLoaded', function () {
-        alert('button clicked');
-    
-        var logoutButton = document.getElementById('punchout_return');
-    
-        if (logoutButton) {
-
-            console.log('button available');
-            var session_id = getSessionIdFromCookie();   
-            logoutButton.addEventListener('click', function (e) {
-                e.preventDefault();
-                // jQuery.ajax({
-                //     url: myAjax.ajaxurl, // Ensure myAjax.ajaxurl is defined somewhere in your PHP using wp_localize_script
-                //     _ajax_nonce: myAjax.nonce,
-                //     session_id: session_id,
-                //     nonce: myAjax.nonce,
-                //     method: 'POST',
-                //     data: {
-                //         action: 'logout_user_and_redirect'
-                //     },
-                //     success: function (response) {
-                //         if (response.success) {
-                //             window.location.href = response.data.redirect_url; // Redirect URL passed from server
-                //         } else {
-                //             console.error('Failed to log out:', response.data.message);
-                //         }
-                //     },
-                //     error: function () {
-                //         console.error('AJAX error');
-                //     }
-                // });
-            });
-        }else {
-            console.error('Logout button not found');
-        }
-    });    
+   
     
 });
