@@ -511,7 +511,24 @@ class Cart_Manager {
             ),
             'cookies' => array()
         );
-    
+
+        // $base64EncodedCXML = base64_encode(utf8_encode($cxmlData));
+
+        // // Prepare the HTTP request arguments
+        // $args = array(
+        //     'body' => 'oracleCart=' . $base64EncodedCXML,
+        //     'timeout' => 45,
+        //     'redirection' => 5,
+        //     'httpversion' => '1.0',
+        //     'blocking' => true,
+        //     'headers' => array(
+        //         'Content-Type' => 'application/octet-stream',
+        //         'Content-Encoding' => 'identity'
+        //     ),
+        //     'cookies' => array()
+        // );
+        
+
         // Send the POST request
         $response = wp_remote_post($order_url, $args);
     

@@ -1072,8 +1072,8 @@ function create_complete_punchout_order_cxml() {
     
 
     // Assuming from_field and to_field store DUNS identities
-    $fromIdentity = esc_html($session_details->from); // The 'to' value in cm_sessions becomes 'From' in cXML
-    $toIdentity = esc_html($session_details->to); // The 'from' value in cm_sessions becomes 'To' in cXML
+    $fromIdentity = esc_html($session_details->to); // The 'to' value in cm_sessions becomes 'From' in cXML
+    $toIdentity = esc_html($session_details->from); // The 'from' value in cm_sessions becomes 'To' in cXML
     $buyerCookie = esc_html($session_details->buyer_cookie);
     $payloadID = esc_html($session_details->payload_id);
 
@@ -1098,8 +1098,12 @@ function create_complete_punchout_order_cxml() {
     $cxml .= '</Message>';
     $cxml .= '</cXML>';
 
-    return $cart_manager->sendPunchOutOrder($cxml);
-    // wp_logout();
+    $cart_manager->sendPunchOutOrder($cxml);
+    setcookie('cm_session_key', '', time() - 3600, '/');
+    setcookie('cm_session_id', '', time() - 3600, '/');
+    wp_logout();
+    wp_redirect(home_url());
+    exit;
 }
 
 // Return to ERP button for the session specific user

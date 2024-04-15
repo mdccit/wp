@@ -217,7 +217,6 @@ li.product .product-image {
 #punchout_return {
     position: fixed;
     bottom: 20px;
-    right: 89px;
     z-index: 99999;
     padding: 0.5rem 1.5rem;
     height: 55px;
