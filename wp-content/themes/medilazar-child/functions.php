@@ -24,6 +24,9 @@ add_action('wp_ajax_nopriv_cm_ajax_update_product_from_product_page', 'handle_cm
 add_action('wp_ajax_get_mini_cart_total_for_session', 'handle_get_mini_cart_total_for_session');
 add_action('wp_ajax_nopriv_get_mini_cart_total_for_session', 'handle_get_mini_cart_total_for_session');
 
+add_action('wp_ajax_logout_user_and_redirect', 'handle_logout_user_and_redirect');
+add_action('wp_ajax_nopriv_logout_user_and_redirect', 'handle_logout_user_and_redirect');
+
 
 add_filter('woocommerce_cart_subtotal', function($cart_subtotal, $compound, $instance) {
         global $cart_manager, $session_manager;  
@@ -1070,12 +1073,15 @@ function create_complete_punchout_order_cxml() {
         return;
     }
     
+     // Calculate the total from cart items
+    $cart_total = $cart_manager->get_cart_total_for_session_order($session_id);
 
     // Assuming from_field and to_field store DUNS identities
     $fromIdentity = esc_html($session_details->to); // The 'to' value in cm_sessions becomes 'From' in cXML
     $toIdentity = esc_html($session_details->from); // The 'from' value in cm_sessions becomes 'To' in cXML
     $buyerCookie = esc_html($session_details->buyer_cookie);
     $payloadID = esc_html($session_details->payload_id);
+    $currentDateTime = date('Y-m-d\TH:i:s');
 
     // Generate cart items cXML (assuming this function is implemented elsewhere)
     $cartItemsCxml = $cart_manager->generate_punchout_order_message_cxml();
@@ -1083,27 +1089,40 @@ function create_complete_punchout_order_cxml() {
     // Construct the full cXML PunchOutOrderMessage
     $cxml = '<?xml version="1.0" encoding="UTF-8"?>';
     // $cxml .= '<!DOCTYPE cXML SYSTEM "http://xml.cxml.org/schemas/cXML/1.2.008/cXML.dtd">';
-    $cxml .= '<cXML payloadID="' . $payloadID . '" timestamp="' . gmdate('c') . '">';
+    $cxml .= '<cXML payloadID="' . $payloadID . '" timestamp="' .$currentDateTime . '">';
     $cxml .= "<Header>";
     $cxml .= "<From><Credential domain=\"DUNS\"><Identity>$fromIdentity</Identity></Credential></From>";
     $cxml .= "<To><Credential domain=\"DUNS\"><Identity>$toIdentity</Identity></Credential></To>";
-    $cxml .= "<Sender><Credential domain=\"DUNS\"><Identity>$fromIdentity</Identity></Credential></UserAgent></Sender>";
+    $cxml .= "<Sender><Credential domain=\"DUNS\"><Identity>$fromIdentity</Identity></Credential><UserAgent/></Sender>";
     $cxml .= "</Header>";
     $cxml .= '<Message>';
     $cxml .= '<PunchOutOrderMessage>';
     $cxml .= '<BuyerCookie>' . $buyerCookie . '</BuyerCookie>';
-    $cxml .= '<PunchOutOrderMessageHeader operationAllowed="create">...</PunchOutOrderMessageHeader>';
+    $cxml .= '<PunchOutOrderMessageHeader operationAllowed="create">';
+    $cxml .= '<Total>';
+    $cxml .= '<Money currency="EUR">' . $cart_total . '</Money>'; // Assuming EUR is your currency
+    $cxml .= '</Total>';
+    $cxml .= '</PunchOutOrderMessageHeader>';
     $cxml .= $cartItemsCxml; // Include the cart items cXML
     $cxml .= '</PunchOutOrderMessage>';
     $cxml .= '</Message>';
     $cxml .= '</cXML>';
 
-    $cart_manager->sendPunchOutOrder($cxml);
+
+    error_log(' Completing Order');
+    $result = $cart_manager->sendPunchOutOrder($cxml);
+    // return;
     setcookie('cm_session_key', '', time() - 3600, '/');
     setcookie('cm_session_id', '', time() - 3600, '/');
     wp_logout();
-    wp_redirect(home_url());
-    exit;
+    
+    if (!headers_sent()) {
+        wp_send_json_success(['redirect_url' => home_url()]);
+    } else {
+        error_log('Headers already sent');
+        wp_send_json_error('Logout successful, but redirect failed');
+    }
+    
 }
 
 // Return to ERP button for the session specific user
@@ -1324,30 +1343,13 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
 }
 
 
-// add_action('woocommerce_order_calculate_totals', 'set_custom_order_total_with_tax', 10, 2);
-
-// function set_custom_order_total_with_tax($and_taxes, $order) {
-//     if ($order->get_payment_method() === 'cm_manual') {
-//         $desired_total = 100; // Example value, replace with your dynamic total
-
-//         $difference = $desired_total - $order->get_total();
-
-//         if ($difference != 0) {
-//             $item_fee = new WC_Order_Item_Fee();
-
-//             $item_fee->set_name($difference > 0 ? 'Adjustment Fee' : 'Discount');
-//             $item_fee->set_amount($difference);
-//             $item_fee->set_total($difference);
-
-//             // Set the tax class for the fee (e.g., 'standard' for the standard tax rate)
-//             // Make sure the tax class matches one of your configured tax classes in WooCommerce
-//             $item_fee->set_tax_class('standard');
-
-//             $order->add_item($item_fee);
-
-//             // Recalculate taxes and totals
-//             $order->calculate_taxes();
-//             $order->calculate_totals();
-//         }
-//     }
-// }
+function handle_logout_user_and_redirect() {
+    error_log('received');
+    // Check for user logged in
+    if (is_user_logged_in()) {
+        wp_logout(); // Logout the user
+    }
+    
+    $redirect_url = home_url(); // Redirect to the home page, change this as needed
+    wp_send_json_success(['redirect_url' => $redirect_url]);
+}

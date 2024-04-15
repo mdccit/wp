@@ -28,7 +28,7 @@ jQuery(function ($) {
     }
 
     function checkScrollUp() {
-      console.log('kk');
+      // console.log('kk');
       if ($('.scrollup').hasClass('activate')) {
         $("#punchout_return").css({
           right: "89px"

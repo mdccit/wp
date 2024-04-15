@@ -228,7 +228,7 @@ class Cart_Manager {
 
     public function calculate_cart_total_for_session($session_id) {
         global $session_manager;
-        $current_session_id = $session_manager->get_session_id_from_cookie();
+        $current_session_id = $session_manager->get_session_id_from_cookie();   
         if ($session_manager->is_session_specific_user()) {
             if($session_id == $current_session_id){
                 $cart_data = $this->get_cart_data_for_session($session_id);
@@ -245,6 +245,28 @@ class Cart_Manager {
                 // $total = WC()->cart->get_cart_total();
                 $formatted_cart_total = wc_price($total);
                 return $formatted_cart_total;
+            }
+        }
+      
+    }
+
+    public function get_cart_total_for_session_order($session_id) {
+        global $session_manager;
+        $current_session_id = $session_manager->get_session_id_from_cookie();   
+        if ($session_manager->is_session_specific_user()) {
+            if($session_id == $current_session_id){
+                $cart_data = $this->get_cart_data_for_session($session_id);
+                $total = 0;
+                if (is_array($cart_data)) {
+                    foreach ($cart_data as $item) {
+                        $product = wc_get_product($item['product_id']);
+                        if ($product) {
+                            $total += $product->get_price() * $item['quantity'];
+                        }
+                    }
+                }
+
+                return $total;
             }
         }
       
@@ -467,6 +489,7 @@ class Cart_Manager {
             $cxmlItems .= "<UnitPrice><Money currency=\"EUR\">" . esc_html($product->get_price()) . "</Money></UnitPrice>";
             $cxmlItems .= "<Description xml:lang=\"es-ES\">" . esc_html($product->get_name()) . "</Description>";
             $cxmlItems .= "<UnitOfMeasure>UNIT</UnitOfMeasure>";
+            $cxmlItems .= "<Classification domain=\"SPSC\"></Classification>";
             $cxmlItems .= "<Classification domain=\"UNSPSC\"></Classification>";
             $cxmlItems .= "<ManufacturerPartID/>";
             $cxmlItems .= "<ManufacturerName/>";
@@ -538,11 +561,11 @@ class Cart_Manager {
             // Handle error
             $error_message = $response->get_error_message();        
             wp_send_json_error( "Failed to send PunchOutOrderMessage: $error_message");
-            return;
+            return false;
         } else {
             // Handle success
-            wp_send_json_success('PunchOutOrderMessage sent successfully');
-            return;
+         
+            return true;
         }
     }
     
