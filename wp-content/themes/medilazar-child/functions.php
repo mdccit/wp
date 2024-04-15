@@ -1125,32 +1125,37 @@ function create_complete_punchout_order_cxml() {
 
     error_log(' Completing Order');
     $result = $cart_manager->sendPunchOutOrder($cxml);
-    // return;
-    setcookie('cm_session_key', '', time() - 3600, '/');
-    setcookie('cm_session_id', '', time() - 3600, '/');
-    wp_logout();
-    
-    if (!headers_sent()) {
-        $redirect_url = home_url().'/session-expirada/';
-        $response = array(
-            'success' => true,
-            'data' => array(
-                'redirect_url' => $redirect_url ? $redirect_url : home_url() ,
-                'message' => 'Return successful.'
-            )
-        );
-    } else {
-        error_log('Headers already sent');
-        $response = array(
-            'success' => false,
-            'data' => array(               
-                'message' => 'Failed.'
-            )
-        );
-    }
 
-    echo json_encode($response);
-    exit;
+    if($result){
+
+        // return;
+        setcookie('cm_session_key', '', time() - 3600, '/');
+        setcookie('cm_session_id', '', time() - 3600, '/');
+        wp_logout();
+        
+        if (!headers_sent()) {
+            $redirect_url = home_url().'/session-expirada/';
+            $response = array(
+                'success' => true,
+                'data' => array(
+                    'redirect_url' => $redirect_url ? $redirect_url : home_url() ,
+                    'message' => 'Return successful.'
+                )
+            );
+        } else {
+            error_log('Headers already sent');
+            $response = array(
+                'success' => false,
+                'data' => array(               
+                    'message' => 'Failed.'
+                )
+            );
+        }
+
+        echo json_encode($response);
+        exit;
+
+    }
     
 }
 

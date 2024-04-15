@@ -223,14 +223,13 @@ jQuery(document).ready(function($) {
                         action: 'create_complete_punchout_order_cxml',
                         _ajax_nonce: myAjax.nonce,
                         session_id: session_id,
-                        nonce: myAjax.nonce
                     },
                     dataType: 'json',
 
                     success: function(response) {   
                         console.log(response);         
-                      
-                    },               
+                        window.location.href = response.data.redirect_url;   
+                    },
                     error: function (jqXHR, textStatus, errorThrown) {
                         console.error('AJAX error:', textStatus, errorThrown);
                     }
