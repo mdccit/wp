@@ -510,12 +510,12 @@ class Cart_Manager {
         $session_id = $session_manager->get_session_id_from_cookie();
     
         // Retrieve the order_url for the given session_id from the database
-        // $order_url = $wpdb->get_var($wpdb->prepare(
-        //     "SELECT order_url FROM $table_name WHERE session_id = %s",
-        //     $session_id
-        // ));
+        $order_url = $wpdb->get_var($wpdb->prepare(
+            "SELECT order_url FROM $table_name WHERE session_id = %s",
+            $session_id
+        ));
     
-        $order_url = "https://commercialmedica.requestcatcher.com/test";
+        // $order_url = "https://commercialmedica.requestcatcher.com/test";
     
         if (!$order_url) {
             wp_send_json_error('No order URL found for session_id: ' . $session_id);

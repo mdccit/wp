@@ -28,15 +28,8 @@ jQuery(document).ready(function($) {
                     session_id: session_id,
                 },
                 success: function (response) {
-                    // if (response.success) {
-                        window.location.href = response.data.redirect_url; // Redirect if needed or handle as per your application logic
-                    // } else {
-                    //     if (response.data && response.data.message) {
-                    //         console.error('Failed to log out:', response.data.message);
-                    //     } else {
-                    //         console.error('Failed to log out: Unknown error'); // Fallback error message
-                    //     }
-                    // }
+                        // window.location.href = response.data.redirect_url; // Redirect if needed or handle as per your application logic
+               
                 },
                 error: function (jqXHR, textStatus, errorThrown) {
                     console.error('AJAX error:', textStatus, errorThrown);
@@ -49,7 +42,7 @@ jQuery(document).ready(function($) {
 
 
         // PUNCHOUT ORDER MESSAGE
-        $('.wc-proceed-to-checkout a.checkout-button').on('click', function(e) {
+        $('.wc-proceed-to-checkout a.cm-punchout-checkout-button').on('click', function(e) {
             e.preventDefault();  
                 if(getSessionIdFromSessionCookie !== null){         
                     create_complete_punchout_order_cxml();         
@@ -71,8 +64,8 @@ jQuery(document).ready(function($) {
                         dataType: 'json',
     
                         success: function(response) {   
-                            console.log(response);         
-                            window.location.href = response.data.redirect_url;   
+                            // console.log(response);         
+                            // window.location.href = response.data.redirect_url;   
                         },
                         error: function (jqXHR, textStatus, errorThrown) {
                             console.error('AJAX error:', textStatus, errorThrown);

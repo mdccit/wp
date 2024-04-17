@@ -1133,12 +1133,14 @@ function create_complete_punchout_order_cxml() {
         setcookie('cm_session_id', '', time() - 3600, '/');
         wp_logout();
         
+
+        // 'redirect_url' => $redirect_url ? $redirect_url : home_url() ,
         if (!headers_sent()) {
-            $redirect_url = home_url().'/session-expirada/';
+            $redirect_url = home_url().'/sesion-expirada/';
             $response = array(
                 'success' => true,
                 'data' => array(
-                    'redirect_url' => $redirect_url ? $redirect_url : home_url() ,
+                    'redirect_url' => $redirect_url ,
                     'message' => 'Return successful.'
                 )
             );
@@ -1391,18 +1393,46 @@ function handle_logout_user_and_redirect() {
         ));
 
 
-        setcookie('cm_session_key', '', time() - 3600, '/');
-        setcookie('cm_session_id', '', time() - 3600, '/');
-        wp_logout();
-
-
-        $response = array(
-            'success' => true,
-            'data' => array(
-                'redirect_url' => $order_url ? $order_url : home_url() ,
-                'message' => 'Return successful.'
-            )
+        $args = array(
+            'body' => array('oracleCart' => ''),
+            'timeout' => 45,
+            'redirection' => 5,
+            'httpversion' => '1.0',
+            'blocking' => true,
+            'headers' => array(
+                'Content-Type' => 'application/x-www-form-urlencoded; charset=ISO-8859-1'
+            ),
+            'cookies' => array()
         );
+
+        $response = wp_remote_post($order_url, $args);    
+    
+
+         // Check if the request was successful
+        if (is_wp_error($response)) {
+            // Handle error
+            $error_message = $response->get_error_message();        
+            wp_send_json_error( "Failed to send PunchOutOrderMessage: $error_message");
+            return false;
+        } else {
+            // Handle success
+            setcookie('cm_session_key', '', time() - 3600, '/');
+            setcookie('cm_session_id', '', time() - 3600, '/');
+            wp_logout();
+    
+            return true;
+        }
+
+
+        // 'redirect_url' => $order_url ? $order_url : home_url() ,
+        // $redirect_url = home_url().'/sesion-expirada/';
+        // $response = array(
+        //     'success' => true,
+        //     'data' => array(
+        //         'redirect_url' => $redirect_url ,
+        //         'message' => 'Return successful.'
+        //     )
+        // );
     } else {
         error_log('User not logged in.');
         $response = array(
