@@ -1124,40 +1124,56 @@ function create_complete_punchout_order_cxml() {
 
 
     error_log(' Completing Order');
-    $result = $cart_manager->sendPunchOutOrder($cxml);
 
-    if($result){
+    $order_url = $wpdb->get_var($wpdb->prepare(
+        "SELECT order_url FROM $table_name WHERE session_id = %s",
+        $session_id
+    ));
 
-        // return;
+    if ($cxml) {
+        wp_send_json_success(['cxmlData' => $cxml, 'orderUrl' => $order_url]);
         setcookie('cm_session_key', '', time() - 3600, '/');
         setcookie('cm_session_id', '', time() - 3600, '/');
         wp_logout();
+    } else {
+        wp_send_json_error(['message' => 'Failed to generate cXML data']);
+    }
+
+    exit;
+    // $result = $cart_manager->sendPunchOutOrder($cxml);
+
+    // if($result){
+
+    //     // return;
+    //     setcookie('cm_session_key', '', time() - 3600, '/');
+    //     setcookie('cm_session_id', '', time() - 3600, '/');
+    //     wp_logout();
         
 
-        // 'redirect_url' => $redirect_url ? $redirect_url : home_url() ,
-        if (!headers_sent()) {
-            $redirect_url = home_url().'/sesion-expirada/';
-            $response = array(
-                'success' => true,
-                'data' => array(
-                    'redirect_url' => $redirect_url ,
-                    'message' => 'Return successful.'
-                )
-            );
-        } else {
-            error_log('Headers already sent');
-            $response = array(
-                'success' => false,
-                'data' => array(               
-                    'message' => 'Failed.'
-                )
-            );
-        }
+    //     // 'redirect_url' => $redirect_url ? $redirect_url : home_url() ,
+    //     if (!headers_sent()) {
+    //         $redirect_url = home_url().'/sesion-expirada/';
+    //         $response = array(
+    //             'success' => true,
+    //             'data' => array(
+    //                 'redirect_url' => $redirect_url ,
+    //                 'message' => 'Return successful.'
+    //             )
+    //         );
+    //     } else {
+    //         error_log('Headers already sent');
+    //         $response = array(
+    //             'success' => false,
+    //             'data' => array(               
+    //                 'message' => 'Failed.'
+    //             )
+    //         );
+    //     }
 
-        echo json_encode($response);
-        exit;
+    //     echo json_encode($response);
+    //     exit;
 
-    }
+    // }
     
 }
 
@@ -1420,19 +1436,19 @@ function handle_logout_user_and_redirect() {
             setcookie('cm_session_id', '', time() - 3600, '/');
             wp_logout();
     
-            return true;
+           
         }
 
 
         // 'redirect_url' => $order_url ? $order_url : home_url() ,
         // $redirect_url = home_url().'/sesion-expirada/';
-        // $response = array(
-        //     'success' => true,
-        //     'data' => array(
-        //         'redirect_url' => $redirect_url ,
-        //         'message' => 'Return successful.'
-        //     )
-        // );
+        $response = array(
+            'success' => true,
+            'data' => array(
+                'redirect_url' => $order_url ? $order_url : home_url()  ,
+                'message' => 'Return successful.'
+            )
+        );
     } else {
         error_log('User not logged in.');
         $response = array(

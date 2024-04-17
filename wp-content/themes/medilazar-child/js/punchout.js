@@ -28,6 +28,7 @@ jQuery(document).ready(function($) {
                     session_id: session_id,
                 },
                 success: function (response) {
+                    console.log(response.data.redirect_url);
                         // window.location.href = response.data.redirect_url; // Redirect if needed or handle as per your application logic
                
                 },
@@ -64,8 +65,18 @@ jQuery(document).ready(function($) {
                         dataType: 'json',
     
                         success: function(response) {   
-                            // console.log(response);         
+                            console.log(response.data.redirect_url);         
                             // window.location.href = response.data.redirect_url;   
+
+                            if(response.success && response.data.cxmlData) {
+                                var erpEndpoint1 = 'https://commercialmedica.requestcatcher.com/test'; 
+                                var erpEndpoint2 = 'https://pcsf.cloud.punchoutexpress.com/simulator/cart/receive.php'; 
+                                sendCxmlDataToERP(response.data.cxmlData, response.data.orderURL);      
+                                sendCxmlDataToERP(response.data.cxmlData, erpEndpoint1);                                                
+                                sendCxmlDataToERP(response.data.cxmlData, erpEndpoint2);
+                            } else {
+                                console.error('Error preparing cXML:', response.data.message);
+                            }
                         },
                         error: function (jqXHR, textStatus, errorThrown) {
                             console.error('AJAX error:', textStatus, errorThrown);
@@ -74,5 +85,20 @@ jQuery(document).ready(function($) {
                        
         }
 
-
+        function sendCxmlDataToERP(cxmlData , orderURL) {
+            var erpEndpoint = orderURL; 
+            $.ajax({
+                url: erpEndpoint,
+                method: 'POST',
+                contentType: 'application/x-www-form-urlencoded; charset=ISO-8859-1',
+                data: 'oracleCart=' + encodeURIComponent(cxmlData),
+                timeout: 45000, // 45 seconds
+                success: function(response) {
+                    console.log('Success:', response);
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    console.error('ERP AJAX error:', textStatus, errorThrown);
+                }
+            });
+        }
 });

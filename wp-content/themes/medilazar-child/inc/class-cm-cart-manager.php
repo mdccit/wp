@@ -515,7 +515,7 @@ class Cart_Manager {
             $session_id
         ));
     
-        // $order_url = "https://commercialmedica.requestcatcher.com/test";
+        $test_order_url = "https://commercialmedica.requestcatcher.com/test";
     
         if (!$order_url) {
             wp_send_json_error('No order URL found for session_id: ' . $session_id);
@@ -551,7 +551,6 @@ class Cart_Manager {
         //     'cookies' => array()
         // );
         
-
         // Send the POST request
         $response = wp_remote_post($order_url, $args);
     
