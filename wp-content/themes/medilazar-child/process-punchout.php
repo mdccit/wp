@@ -1,8 +1,9 @@
 <?php
-require_once($_SERVER['DOCUMENT_ROOT'] . '/wp-load.php'); // Load WordPress environment
+require_once('../../../wp-load.php'); 
+
 
 // Assuming user is redirected here with a valid session
-$punchout_data = create_complete_punchout_order_cxml();
+$punchout_data = get_complete_punchout_order_cxml();
 
 if (isset($punchout_data['error'])) {
     // Handle error, e.g., redirect or display an error message
@@ -12,6 +13,8 @@ if (isset($punchout_data['error'])) {
 
 // If data is successfully retrieved
 $cxml_data = htmlspecialchars($punchout_data['cxmlData']); // Safely encode for HTML display
+
+// $order_url = 'https://commercialmedica.requestcatcher.com/test';
 $order_url = esc_url($punchout_data['orderUrl']);
 ?>
 

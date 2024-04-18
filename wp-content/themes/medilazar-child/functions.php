@@ -1070,7 +1070,7 @@ add_action('wp_ajax_nopriv_create_complete_punchout_order_cxml', 'create_complet
 function create_complete_punchout_order_cxml() {
 
 
-    check_ajax_referer('punchout_order_nonce', 'nonce'); // Check the nonce for security
+    //check_ajax_referer('punchout_order_nonce', 'nonce'); // Check the nonce for security
 
     global $wpdb, $session_manager, $cart_manager; // Make sure to globalize $wpdb to use it for database operations
     $table_name = $wpdb->prefix . 'cm_sessions'; // Assuming 'cm_sessions' is the table name, adjust if necessary
@@ -1428,3 +1428,59 @@ function handle_logout_user_and_redirect() {
     echo json_encode($response);
     exit;
 }
+
+
+ function get_complete_punchout_order_cxml() {
+    global $wpdb, $session_manager, $cart_manager;
+    $table_name = $wpdb->prefix . 'cm_sessions';
+    $session_id = $session_manager->get_session_id_from_cookie();
+
+    $session_details = $wpdb->get_row($wpdb->prepare(
+        "SELECT `from`, `to`, buyer_cookie, payload_id FROM $table_name WHERE session_id = %s",
+        $session_id
+    ));
+
+    if (is_null($session_details)) {
+        return ['error' => 'No session found'];
+    }
+
+    $cart_total = $cart_manager->get_cart_total_for_session_order($session_id);
+    $fromIdentity = esc_html($session_details->to);
+    $toIdentity = esc_html($session_details->from);
+    $buyerCookie = esc_html($session_details->buyer_cookie);
+    $payloadID = esc_html($session_details->payload_id);
+    $currentDateTime = date('Y-m-d\TH:i:s');
+    $cartItemsCxml = $cart_manager->generate_punchout_order_message_cxml(); // Ensure this method returns valid cXML string
+
+    $cxml = '<?xml version="1.0" encoding="UTF-8"?>' .
+            '<cXML payloadID="' . $payloadID . '" timestamp="' . $currentDateTime . '">' .
+            "<Header>" .
+            "<From><Credential domain=\"DUNS\"><Identity>$fromIdentity</Identity></Credential></From>" .
+            "<To><Credential domain=\"DUNS\"><Identity>$toIdentity</Identity></Credential></To>" .
+            "<Sender><Credential domain=\"DUNS\"><Identity>$fromIdentity</Identity></Credential><UserAgent/></Sender>" .
+            "</Header>" .
+            '<Message>' .
+            '<PunchOutOrderMessage>' .
+            '<BuyerCookie>' . $buyerCookie . '</BuyerCookie>' .
+            '<PunchOutOrderMessageHeader operationAllowed="create">' .
+            '<Total>' .
+            '<Money currency="EUR">' . $cart_total . '</Money>' .
+            '</Total>' .
+            '</PunchOutOrderMessageHeader>' .
+            $cartItemsCxml .
+            '</PunchOutOrderMessage>' .
+            '</Message>' .
+            '</cXML>';
+
+    $order_url = $wpdb->get_var($wpdb->prepare(
+        "SELECT order_url FROM $table_name WHERE session_id = %s",
+        $session_id
+    ));
+
+    if (!$cxml) {
+        return ['error' => 'Failed to generate cXML data'];
+    }
+
+    return ['cxmlData' => $cxml, 'orderUrl' => $order_url];
+}
+
