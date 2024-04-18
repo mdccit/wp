@@ -41,7 +41,7 @@ jQuery(document).ready(function($) {
     });   
 
 
-
+/*
         // PUNCHOUT ORDER MESSAGE
         $('.wc-proceed-to-checkout a.cm-punchout-checkout-button').on('click', function(e) {
             e.preventDefault();  
@@ -64,16 +64,16 @@ jQuery(document).ready(function($) {
                         },
                         dataType: 'json',
     
-                        success: function(response) {   
-                            console.log(response.data.redirect_url);         
-                            // window.location.href = response.data.redirect_url;   
-
-                            if(response.success && response.data.cxmlData) {
+                        success: function(response) {                                    
+                             if(response.success && response.data.cxmlData) {
                                 var erpEndpoint1 = 'https://commercialmedica.requestcatcher.com/test'; 
-                                var erpEndpoint2 = 'https://pcsf.cloud.punchoutexpress.com/simulator/cart/receive.php'; 
-                                sendCxmlDataToERP(response.data.cxmlData, response.data.orderURL);      
-                                sendCxmlDataToERP(response.data.cxmlData, erpEndpoint1);                                                
-                                sendCxmlDataToERP(response.data.cxmlData, erpEndpoint2);
+                                var erpEndpoint = response.data['orderUrl'];
+                                var cxmlData = response.data['cxmlData'];
+                                console.log(erpEndpoint);
+                                console.log('submitted');
+                                console.log(cxmlData);
+                                // sendCxmlDataToERP(response.data.cxmlData, response.data.orderURL);      
+                                sendCxmlDataToERP(response.data.cxmlData, erpEndpoint1);       
                             } else {
                                 console.error('Error preparing cXML:', response.data.message);
                             }
@@ -86,6 +86,7 @@ jQuery(document).ready(function($) {
         }
 
         function sendCxmlDataToERP(cxmlData , orderURL) {
+
             var erpEndpoint = orderURL; 
             $.ajax({
                 url: erpEndpoint,
@@ -101,4 +102,7 @@ jQuery(document).ready(function($) {
                 }
             });
         }
+
+
+        */
 });

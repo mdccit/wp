@@ -1141,40 +1141,6 @@ function create_complete_punchout_order_cxml() {
 
     exit;
     // $result = $cart_manager->sendPunchOutOrder($cxml);
-
-    // if($result){
-
-    //     // return;
-    //     setcookie('cm_session_key', '', time() - 3600, '/');
-    //     setcookie('cm_session_id', '', time() - 3600, '/');
-    //     wp_logout();
-        
-
-    //     // 'redirect_url' => $redirect_url ? $redirect_url : home_url() ,
-    //     if (!headers_sent()) {
-    //         $redirect_url = home_url().'/sesion-expirada/';
-    //         $response = array(
-    //             'success' => true,
-    //             'data' => array(
-    //                 'redirect_url' => $redirect_url ,
-    //                 'message' => 'Return successful.'
-    //             )
-    //         );
-    //     } else {
-    //         error_log('Headers already sent');
-    //         $response = array(
-    //             'success' => false,
-    //             'data' => array(               
-    //                 'message' => 'Failed.'
-    //             )
-    //         );
-    //     }
-
-    //     echo json_encode($response);
-    //     exit;
-
-    // }
-    
 }
 
 // Return to ERP button for the session specific user
