@@ -1126,6 +1126,10 @@ function get_complete_punchout_order_cxml() {
 add_action('wp_footer', 'cm_render_punchout_return_button');
 
 function cm_render_punchout_return_button() {
+
+    if (is_cart()) {
+        return;
+    }
     global $session_manager;
     $session_specific_user = $session_manager->is_session_specific_user();
 
@@ -1286,16 +1290,19 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
         $product_id = wc_get_product_id_by_sku((string)$itemOut->ItemID->SupplierPartID);
         $product = wc_get_product($product_id);
         if ($product) {
-            $order->add_product($product, $quantity, array('subtotal' => $unitPrice, 'total' => $line_total));
+           $item_id =  $order->add_product($product, $quantity, array('subtotal' => $unitPrice, 'total' => $line_total));
+
+             // Get the order item object
+            $item = $order->get_item($item_id);
+            
+            if ($item && !empty($requestedDeliveryDate)) {
+                // Adding custom meta data to the order item
+                $item->add_meta_data('Fecha de Entrega Solicitada', $requestedDeliveryDate, true);
+                $item->save_meta_data(); // Save the meta data changes
+            }
         }
 
-            // If there is a requestedDeliveryDate, add it as order meta
-            if (!empty($requestedDeliveryDate)) {
-                $deliveryDate = (string)$requestedDeliveryDate;
-                $order->update_meta_data('_requested_delivery_date', $deliveryDate);
-            }
-
-            // Process Extrinsic elements for each ItemOut
+             // Process Extrinsic elements for each ItemOut
             foreach ($itemOut->ItemDetail->Extrinsic as $extrinsic) {
                 $name = (string)$extrinsic['name'];
                 $value = (string)$extrinsic;  
@@ -1323,9 +1330,7 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
 
      // Set billing address
     $order->set_address($billingAddress, 'billing');
-    // Assuming shipping is free and no additional calculations are needed   
-
-   
+    // Assuming shipping is free and no additional calculations are needed    
 
     $order->set_payment_method('cm_manual');  
     $manual_payment_gateway = new CM_WC_Gateway_Manual();
@@ -1343,6 +1348,8 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
 function handle_logout_user_and_redirect() {
     global $wpdb, $session_manager;
     check_ajax_referer('punchout_order_nonce', 'nonce'); // Check the nonce for security
+
+    /*
     if ($session_manager->is_session_specific_user()) {
 
         $session_id = $session_manager->get_current_session_id(); // Make sure this method exists and correctly retrieves the session ID
@@ -1405,9 +1412,10 @@ function handle_logout_user_and_redirect() {
     }
 
     echo json_encode($response);
+
+    */
     exit;
+
+
 }
-
-
-
 
