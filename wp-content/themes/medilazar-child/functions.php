@@ -1272,7 +1272,8 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
 
          // Set the customer for the order
     $order->set_customer_id($user->ID);
-    
+    $order->update_meta_data('_order_date_cxml', $orderDate);
+    $order->update_meta_data('_order_id_cxml', $orderID);
 
     $order_manager->update_order_meta_from_cxml($order, $senderIdentity, $totalAmount, $currency, $cxmlOrderID);
 
@@ -1419,3 +1420,40 @@ function handle_logout_user_and_redirect() {
 
 }
 
+add_action('woocommerce_admin_order_data_after_order_details', 'display_order_date_and_id_admin');
+
+function display_order_date_and_id_admin($order) {
+    global $session_manager;
+    $session_specific_user = $session_manager->is_session_specific_user();
+
+   
+        $order_date = $order->get_meta('_order_date_cxml');
+        $order_id = $order->get_meta('_order_id_cxml');
+        $dt_order_date = new DateTime($order_date);
+        $formatted_order_date = $dt_order_date->format('Y-m-d');
+        echo '<div style="margin-top:40px">';
+        echo '<p>Order Date : ' . esc_html($formatted_order_date) . '</p>';
+        echo '<p>Order ID : ' . esc_html($order_id) . '</p>';
+        echo '</div>';
+   
+}
+
+
+add_action('template_redirect', 'restrict_product_access');
+function restrict_product_access() {
+    if (is_product()) {
+        global $product;
+        $current_user = wp_get_current_user();
+
+        // Fetch SKUs from the user's ACF field
+        $restricted_skus = get_field('restricted_skus', 'user_' . $current_user->ID); // Assuming 'restricted_skus' is your field name
+
+        if (!empty($restricted_skus)) {
+            $skus_array = explode(',', $restricted_skus); // Split string into array
+            if (in_array($product->get_sku(), $skus_array)) {
+                wp_redirect(home_url()); // Redirect to the home page
+                exit;
+            }
+        }
+    }
+}
