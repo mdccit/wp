@@ -1423,10 +1423,6 @@ function handle_logout_user_and_redirect() {
 add_action('woocommerce_admin_order_data_after_order_details', 'display_order_date_and_id_admin');
 
 function display_order_date_and_id_admin($order) {
-    global $session_manager;
-    $session_specific_user = $session_manager->is_session_specific_user();
-
-   
         $order_date = $order->get_meta('_order_date_cxml');
         $order_id = $order->get_meta('_order_id_cxml');
         $dt_order_date = new DateTime($order_date);
@@ -1434,10 +1430,11 @@ function display_order_date_and_id_admin($order) {
         echo '<div style="margin-top:40px">';
         echo '<p>Order Date : ' . esc_html($formatted_order_date) . '</p>';
         echo '<p>Order ID : ' . esc_html($order_id) . '</p>';
-        echo '</div>';
-   
+        echo '</div>';   
 }
 
+
+// User wise product restriction
 add_action('template_redirect', 'restrict_product_access');
 function restrict_product_access() {
     if (is_product()) {
@@ -1449,22 +1446,17 @@ function restrict_product_access() {
             return;  // Stop if no product is found
         }
 
-        // Get the current user
         $current_user = wp_get_current_user();
-        
-        // Assuming 'restricted_skus' is the field name where restricted SKUs are stored for the user
-        // This fetches from user meta. If using ACF, you might use get_field('restricted_skus', 'user_' . $current_user->ID)
-        $restricted_skus_raw = get_user_meta($current_user->ID, 'User_Restricted_Products', true);
+        // Retrieve the restricted SKUs using ACF
+        $restricted_skus_raw = get_field('User_Restricted_Products', 'user_' . $current_user->ID);
 
         if (!$restricted_skus_raw) {
             error_log('No restricted SKUs found for user: ' . $current_user->ID);
             return;  // Stop if there are no restricted SKUs for the user
         }
 
-        // Convert SKUs string to an array (assuming SKUs are saved as a comma-separated string)
         $restricted_skus = explode(',', $restricted_skus_raw);
-        
-        // Check if the product's SKU is in the user's restricted list
+
         if (in_array($product->get_sku(), $restricted_skus)) {
             error_log('Access restricted for SKU: ' . $product->get_sku() . ' for user: ' . $current_user->ID);
             wp_redirect(home_url());  // Redirect to home page
@@ -1473,16 +1465,17 @@ function restrict_product_access() {
     }
 }
 
+
 add_action('pre_get_posts', 'exclude_restricted_products');
 function exclude_restricted_products($query) {
-    // Only modify the main WooCommerce product query on frontend shop and taxonomy pages
     if (!is_admin() && $query->is_main_query() && ($query->is_post_type_archive('product') || $query->is_tax(get_object_taxonomies('product')))) {
-        // Assuming you have a function to get restricted SKUs for the current user
         $current_user = wp_get_current_user();
-        $restricted_skus_raw = get_user_meta($current_user->ID, 'User_Restricted_Products', true);
+        // Retrieve the restricted SKUs using ACF
+        $restricted_skus_raw = get_field('User_Restricted_Products', 'user_' . $current_user->ID);
+
         if (!empty($restricted_skus_raw)) {
             $restricted_skus = explode(',', $restricted_skus_raw);
-            // Convert SKUs to post IDs
+
             $restricted_ids = [];
             foreach ($restricted_skus as $sku) {
                 $product_id = wc_get_product_id_by_sku(trim($sku));
@@ -1491,7 +1484,6 @@ function exclude_restricted_products($query) {
                 }
             }
 
-            // Modify the query to exclude restricted product IDs
             $query->set('post__not_in', array_merge((array) $query->get('post__not_in'), $restricted_ids));
         }
     }
@@ -1499,3 +1491,45 @@ function exclude_restricted_products($query) {
 
 
 
+add_action('rest_api_init', function () {
+    register_rest_route('wc/v3', '/list_orders', array(
+        'methods' => 'GET',
+        'callback' => 'list_custom_orders',
+        'permission_callback' => 'custom_orders_permissions_check'
+    ));
+});
+
+
+function list_custom_orders($request) {
+    $args = array(       
+        'limit' => -1,           // Setting limit to -1 to attempt fetching all orders
+        'return' => 'ids',       // Return only IDs for performance reasons
+        'paginate' => false      // Disable pagination
+    );
+
+    // Modify the query based on request parameters if needed
+    if (!empty($request['customer_id'])) {
+        $args['customer_id'] = $request['customer_id'];
+    }
+
+    $orders = wc_get_orders($args);
+    $order_data = [];
+
+    foreach ($orders as $order_id) {
+        $order = wc_get_order($order_id);
+        // Simplified order data example
+        $order_data[] = [
+            'id' => $order->get_id(),
+            'total' => $order->get_total(),
+            'date_completed' => $order->get_date_completed() ? $order->get_date_completed()->date('Y-m-d H:i:s') : 'N/A',
+            'status' => $order->get_status(),
+        ];
+    }
+
+    return new WP_REST_Response($order_data, 200);
+}
+
+
+function custom_orders_permissions_check($request) {
+    return current_user_can('manage_woocommerce');
+}
