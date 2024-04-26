@@ -1,20 +1,23 @@
+.punchout_order_meta {
+    display: flex; /* Use flexbox to layout children horizontally */
+    justify-content: space-between; /* Distributes space between columns */
+    padding: 10px;
+    background-color: #f1f1f1; /* Light grey background for better visibility */
+}
+
+.order_meta_column {
+    flex: 1; /* Each column takes equal width */
+    padding: 5px;
+    box-sizing: border-box; /* Includes padding and border in the element's total width and height */
+}
+
+.order_meta_column:not(:last-child) {
+    margin-right: 10px; /* Adds spacing between columns, except the last one */
+}
+
 .order_data_column {
     background: #f9f9f9;
     border: 1px solid #eee;
     padding: 10px;
-    margin-top: 20px;
-}
-
-
-.order_meta_column {
-    float: left;
-    width: 33%;
-    padding: 5px;
-    box-sizing: border-box;
-}
-
-.punchout_order_meta:after {
-    content: "";
-    display: table;
-    clear: both;
+    margin-top: 20px; /* Adds spacing above the element */
 }

@@ -1273,9 +1273,7 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     $senderIdentity = (string) $cxml->Header->Sender->Credential->Identity;
     $totalAmount = (string) $cxml->Request->OrderRequest->OrderRequestHeader->Total->Money;
     $currency = $cxml->Request->OrderRequest->OrderRequestHeader->Total->Money['currency'];
-    $cxmlOrderID = (string) $cxml->Request->OrderRequest->OrderRequestHeader['orderID'];
-
-
+  
     $cart_manager->insert_order_request_to_db($cxml_content, $orderID, $orderType, $Type, $senderIdentity, $orderDate);
    
 
@@ -1307,8 +1305,11 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     $order->set_customer_id($user->ID);
     $order->update_meta_data('_order_date_cxml', $orderDate);
     $order->update_meta_data('_order_id_cxml', $orderID);
+    $order->update_meta_data('_order_total_cxml', $totalAmount);
+    $order->update_meta_data('_order_sender_cxml', $senderIdentity);
+    $order->update_meta_data('_order_type_cxml', $orderType);
 
-    $order_manager->update_order_meta_from_cxml($order, $senderIdentity, $totalAmount, $currency, $cxmlOrderID);
+    $order_manager->update_order_meta_from_cxml($order, $senderIdentity, $totalAmount, $currency, $orderID);
 
     $order_total = 0;
 
@@ -1582,8 +1583,8 @@ function custom_order_information_meta_box_content($post) {
     $order = wc_get_order($post->ID);
     $order_id_cxml = $order->get_meta('_order_id_cxml', true);
     $order_date_cxml = $order->get_meta('_order_date_cxml', true);
-    $additional_info1 = $order->get_meta('_additional_info1', true); // Example meta key
-    $additional_info2 = $order->get_meta('_additional_info2', true); // Example meta key
+    $total = $order->get_meta('_order_total_cxml', true); // Example meta key
+    $sender = $order->get_meta('_order_sender_cxml', true); // Example meta key
 
     echo '<div class="punchout_order_meta">';
     echo '<div class="order_meta_column">';
@@ -1596,7 +1597,7 @@ function custom_order_information_meta_box_content($post) {
     echo '</div>'; // Close column two
 
     echo '<div class="order_meta_column">';
-    echo '<p><strong>' . __('Additional Info 2:', 'medilazar') . '</strong> ' . esc_html($additional_info2) . '</p>';
+    echo '<p><strong>' . __('Total (cXML):', 'medilazar') . '</strong> ' . esc_html($total) . '</p>';
     echo '</div>'; // Close column three
     echo '</div>'; // Close punchout_order_meta container
 }
