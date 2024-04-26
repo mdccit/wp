@@ -1571,7 +1571,7 @@ add_action('add_meta_boxes', 'add_custom_order_meta_box');
 function add_custom_order_meta_box() {
     add_meta_box(
         'custom_order_information',                       // ID of the meta box
-        __('Punchout Order Information', 'your-text-domain'), // Title of the meta box
+        __('Información de Pedido Punchout (cXML)', 'medilazar'), // Title of the meta box
         'custom_order_information_meta_box_content',     // Callback function to output content
         'shop_order',                                    // Post type
         'normal',                                          // Context (where on the screen)
@@ -1588,16 +1588,16 @@ function custom_order_information_meta_box_content($post) {
 
     echo '<div class="punchout_order_meta">';
     echo '<div class="order_meta_column">';
-    echo '<p><strong>' . __('Order ID (cXML):', 'medilazar') . '</strong> ' . esc_html($order_id_cxml) . '</p>';
+    echo '<p><strong>' . __('ID de Pedido :', 'medilazar') . '</strong> ' . esc_html($order_id_cxml) . '</p>';
   
     echo '</div>'; // Close column one
 
     echo '<div class="order_meta_column">';
-    echo '<p><strong>' . __('Order Date (cXML):', 'medilazar') . '</strong> ' . esc_html($order_date_cxml) . '</p>';
+    echo '<p><strong>' . __('Fecha del Pedido :', 'medilazar') . '</strong> ' . esc_html($order_date_cxml) . '</p>';
     echo '</div>'; // Close column two
 
     echo '<div class="order_meta_column">';
-    echo '<p><strong>' . __('Total (cXML):', 'medilazar') . '</strong> ' . esc_html($total) . '</p>';
+    echo '<p><strong>' . __('Total:', 'medilazar') . '</strong> €300,00 ' . esc_html($total) . '</p>';
     echo '</div>'; // Close column three
     echo '</div>'; // Close punchout_order_meta container
 }

@@ -1,23 +1,29 @@
 .punchout_order_meta {
-    display: flex; /* Use flexbox to layout children horizontally */
-    justify-content: space-between; /* Distributes space between columns */
-    padding: 10px;
-    background-color: #f1f1f1; /* Light grey background for better visibility */
+    display: flex; /* Establishes a flex container */
+    flex-wrap: wrap; /* Allows columns to wrap on smaller screens */
+    margin-bottom: 20px; /* Adds space below the container */
+    background-color: #f9f9f9; /* Light background for visibility */
+    border: 1px solid #ccc; /* Adds a subtle border around the meta box */
+    padding: 10px; /* Padding inside the container */
 }
 
 .order_meta_column {
-    flex: 1; /* Each column takes equal width */
-    padding: 5px;
-    box-sizing: border-box; /* Includes padding and border in the element's total width and height */
+    flex: 1 1 30%; /* Flex-grow, flex-shrink, and flex-basis */
+    box-sizing: border-box; /* Border and padding included in width */
+    padding: 10px; /* Space inside each column */
+    margin-right: 10px; /* Space between columns */
 }
 
-.order_meta_column:not(:last-child) {
-    margin-right: 10px; /* Adds spacing between columns, except the last one */
+.order_meta_column:last-child {
+    margin-right: 0; /* Removes margin from the last column */
 }
 
-.order_data_column {
-    background: #f9f9f9;
-    border: 1px solid #eee;
-    padding: 10px;
-    margin-top: 20px; /* Adds spacing above the element */
+@media (max-width: 600px) {
+    .order_meta_column {
+        flex-basis: 100%; /* Each column takes full width on small screens */
+        margin-bottom: 10px; /* Adds space between stacked columns */
+    }
+    .order_meta_column:last-child {
+        margin-bottom: 0; /* Removes bottom margin from the last column */
+    }
 }
