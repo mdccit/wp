@@ -1122,6 +1122,36 @@ function get_complete_punchout_order_cxml() {
 }
 
 
+function get_punchout_return_url() {
+    global $wpdb, $session_manager;
+    $table_name = $wpdb->prefix . 'cm_sessions';
+    $session_id = $session_manager->get_session_id_from_cookie();
+
+    $session_details = $wpdb->get_row($wpdb->prepare(
+        "SELECT `from`, `to`, buyer_cookie, payload_id FROM $table_name WHERE session_id = %s",
+        $session_id
+    ));
+
+    if (is_null($session_details)) {
+        return ['error' => 'No session found'];
+    }
+
+
+    $order_url = $wpdb->get_var($wpdb->prepare(
+        "SELECT order_url FROM $table_name WHERE session_id = %s",
+        $session_id
+    ));
+
+
+    setcookie('cm_session_key', '', time() - 3600, '/');
+    setcookie('cm_session_id', '', time() - 3600, '/');
+    wp_logout();
+
+    return [ 'orderUrl' => $order_url];
+}
+
+
+
 // Return to ERP button for the session specific user
 add_action('wp_footer', 'cm_render_punchout_return_button');
 
@@ -1134,7 +1164,10 @@ function cm_render_punchout_return_button() {
     $session_specific_user = $session_manager->is_session_specific_user();
 
     if($session_specific_user) {
-        echo '<a href="#" id="punchout_return"> ' . __('Volver a ERP', 'medilazar') . '</a>';
+        // Ensure the URL points to where your process-punchout.php file is located relative to the site root.
+        $punchout_page_url = get_stylesheet_directory_uri() . '/return-punchout.php'; // Adjust the path as needed.
+
+        echo '<a href="' . esc_url($punchout_page_url) . '" id="punchout_return">' . __('Volver a ERP', 'medilazar') . '</a>';
     }
 }
 
@@ -1346,6 +1379,7 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
 }
 
 
+// Return User to ERP
 function handle_logout_user_and_redirect() {
     global $wpdb, $session_manager;
     check_ajax_referer('punchout_order_nonce', 'nonce'); // Check the nonce for security
@@ -1420,20 +1454,6 @@ function handle_logout_user_and_redirect() {
 
 }
 
-add_action('woocommerce_admin_order_data_after_order_details', 'display_order_date_and_id_admin');
-
-function display_order_date_and_id_admin($order) {
-        $order_date = $order->get_meta('_order_date_cxml');
-        $order_id = $order->get_meta('_order_id_cxml');
-        $dt_order_date = new DateTime($order_date);
-        $formatted_order_date = $dt_order_date->format('Y-m-d');
-        echo '<div style="margin-top:40px">';
-        echo '<p>Order Date : ' . esc_html($formatted_order_date) . '</p>';
-        echo '<p>Order ID : ' . esc_html($order_id) . '</p>';
-        echo '</div>';   
-}
-
-
 // User wise product restriction
 add_action('template_redirect', 'restrict_product_access');
 function restrict_product_access() {
@@ -1501,7 +1521,7 @@ add_action('rest_api_init', function () {
 
 
 function list_custom_orders($request) {
-    $args = array(       
+    $args = array(
         'limit' => -1,           // Setting limit to -1 to attempt fetching all orders
         'return' => 'ids',       // Return only IDs for performance reasons
         'paginate' => false      // Disable pagination
@@ -1517,12 +1537,17 @@ function list_custom_orders($request) {
 
     foreach ($orders as $order_id) {
         $order = wc_get_order($order_id);
+        $order_date_cxml = $order->get_meta('_order_date_cxml');
+        $order_id_cxml = $order->get_meta('_order_id_cxml');
+
         // Simplified order data example
         $order_data[] = [
             'id' => $order->get_id(),
             'total' => $order->get_total(),
             'date_completed' => $order->get_date_completed() ? $order->get_date_completed()->date('Y-m-d H:i:s') : 'N/A',
             'status' => $order->get_status(),
+            'order_date_cxml' => $order_date_cxml ? (new DateTime($order_date_cxml))->format('Y-m-d') : 'N/A',
+            'order_id_cxml' => $order_id_cxml ? $order_id_cxml : 'N/A'
         ];
     }
 
@@ -1532,4 +1557,34 @@ function list_custom_orders($request) {
 
 function custom_orders_permissions_check($request) {
     return current_user_can('manage_woocommerce');
+}
+
+
+add_action('admin_enqueue_scripts', 'enqueue_custom_admin_styles');
+function enqueue_custom_admin_styles() {
+    wp_enqueue_style('cm-admin-css', get_stylesheet_directory_uri() . '/css/admin-style.css');
+}
+
+
+add_action('add_meta_boxes', 'add_custom_order_meta_box');
+function add_custom_order_meta_box() {
+    add_meta_box(
+        'custom_order_information',                       // ID of the meta box
+        __('Punchout Order Information', 'your-text-domain'), // Title of the meta box
+        'custom_order_information_meta_box_content',     // Callback function to output content
+        'shop_order',                                    // Post type
+        'normal',                                          // Context (where on the screen)
+        'high'                                        // Priority
+    );
+}
+
+function custom_order_information_meta_box_content($post) {
+    $order = wc_get_order($post->ID);
+    $order_id_cxml = $order->get_meta('_order_id_cxml', true);
+    $order_date_cxml = $order->get_meta('_order_date_cxml', true);
+
+    echo '<div class="punchout_order_meta">';
+    echo '<p><strong>' . __('Order ID (cXML):', 'medilazar') . '</strong> ' . esc_html($order_id_cxml) . '</p>';
+    echo '<p><strong>' . __('Order Date (cXML):', 'medilazar') . '</strong> ' . esc_html($order_date_cxml) . '</p>';
+    echo '</div>';
 }

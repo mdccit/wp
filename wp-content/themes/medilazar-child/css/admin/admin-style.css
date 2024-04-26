@@ -1,0 +1,14 @@
+.order_data_column {
+    background: #f9f9f9;
+    border: 1px solid #eee;
+    padding: 10px;
+    margin-top: 20px;
+}
+
+
+.punchout_order_meta p {
+    margin: 10px 0;
+    padding: 5px;
+    background: #f9f9f9;
+    border-left: 4px solid #007cba;
+}
