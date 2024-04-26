@@ -6,9 +6,15 @@
 }
 
 
-.punchout_order_meta p {
-    margin: 10px 0;
+.order_meta_column {
+    float: left;
+    width: 33%;
     padding: 5px;
-    background: #f9f9f9;
-    border-left: 4px solid #007cba;
+    box-sizing: border-box;
+}
+
+.punchout_order_meta:after {
+    content: "";
+    display: table;
+    clear: both;
 }

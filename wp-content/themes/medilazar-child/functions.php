@@ -1582,9 +1582,21 @@ function custom_order_information_meta_box_content($post) {
     $order = wc_get_order($post->ID);
     $order_id_cxml = $order->get_meta('_order_id_cxml', true);
     $order_date_cxml = $order->get_meta('_order_date_cxml', true);
+    $additional_info1 = $order->get_meta('_additional_info1', true); // Example meta key
+    $additional_info2 = $order->get_meta('_additional_info2', true); // Example meta key
 
     echo '<div class="punchout_order_meta">';
+    echo '<div class="order_meta_column">';
     echo '<p><strong>' . __('Order ID (cXML):', 'medilazar') . '</strong> ' . esc_html($order_id_cxml) . '</p>';
+  
+    echo '</div>'; // Close column one
+
+    echo '<div class="order_meta_column">';
     echo '<p><strong>' . __('Order Date (cXML):', 'medilazar') . '</strong> ' . esc_html($order_date_cxml) . '</p>';
-    echo '</div>';
+    echo '</div>'; // Close column two
+
+    echo '<div class="order_meta_column">';
+    echo '<p><strong>' . __('Additional Info 2:', 'medilazar') . '</strong> ' . esc_html($additional_info2) . '</p>';
+    echo '</div>'; // Close column three
+    echo '</div>'; // Close punchout_order_meta container
 }
