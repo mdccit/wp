@@ -1,29 +1,17 @@
 .punchout_order_meta {
-    display: flex; /* Establishes a flex container */
-    flex-wrap: wrap; /* Allows columns to wrap on smaller screens */
-    margin-bottom: 20px; /* Adds space below the container */
-    background-color: #f9f9f9; /* Light background for visibility */
-    border: 1px solid #ccc; /* Adds a subtle border around the meta box */
-    padding: 10px; /* Padding inside the container */
+    display: flex; /* Flex container */
+    justify-content: space-between;
+    width: 100%; /* Ensure full width */
 }
 
 .order_meta_column {
-    flex: 1 1 30%; /* Flex-grow, flex-shrink, and flex-basis */
-    box-sizing: border-box; /* Border and padding included in width */
-    padding: 10px; /* Space inside each column */
-    margin-right: 10px; /* Space between columns */
+    flex: 1; /* Each column takes equal space */
+    padding: 10px;
+    margin-right: 5px; /* Spacing between columns */
+    box-sizing: border-box;
+    min-width: 0; /* Helps with flex item sizing */
 }
 
 .order_meta_column:last-child {
-    margin-right: 0; /* Removes margin from the last column */
-}
-
-@media (max-width: 600px) {
-    .order_meta_column {
-        flex-basis: 100%; /* Each column takes full width on small screens */
-        margin-bottom: 10px; /* Adds space between stacked columns */
-    }
-    .order_meta_column:last-child {
-        margin-bottom: 0; /* Removes bottom margin from the last column */
-    }
+    margin-right: 0; /* No margin on the last column */
 }

@@ -60,3 +60,5 @@ Thumbs.db
 .ssh/
 
 wp-content/plugins/*
+
+setup.sh

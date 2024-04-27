@@ -24,10 +24,6 @@ add_action('wp_ajax_nopriv_cm_ajax_update_product_from_product_page', 'handle_cm
 add_action('wp_ajax_get_mini_cart_total_for_session', 'handle_get_mini_cart_total_for_session');
 add_action('wp_ajax_nopriv_get_mini_cart_total_for_session', 'handle_get_mini_cart_total_for_session');
 
-add_action('wp_ajax_logout_user_and_redirect', 'handle_logout_user_and_redirect');
-add_action('wp_ajax_nopriv_logout_user_and_redirect', 'handle_logout_user_and_redirect');
-
-
 add_filter('woocommerce_cart_subtotal', function($cart_subtotal, $compound, $instance) {
         global $cart_manager, $session_manager;  
         // Retrieve the cart total for the session ID
@@ -150,22 +146,6 @@ function enqueue_and_localize_cm_script() {
 }
 
 add_action('wp_enqueue_scripts', 'enqueue_and_localize_cm_script');
-
-
-function enqueue_cm_punchout_script() {
-
-    global  $session_manager;  
- 
-        wp_enqueue_script('punchout', get_stylesheet_directory_uri() . '/js/punchout.js', array('jquery'), null, true);
-        wp_script_add_data('punchout', 'defer', true);
-
-        wp_localize_script('punchout', 'punchoutAjax', array(
-            'ajaxurl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('punchout_order_nonce'),
-        ));  
-}
-
-add_action('wp_enqueue_scripts', 'enqueue_cm_punchout_script');
 
 /**
  * Enqueue script and styles for child theme
@@ -1379,82 +1359,6 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     return $order->get_id();
 }
 
-
-// Return User to ERP
-function handle_logout_user_and_redirect() {
-    global $wpdb, $session_manager;
-    check_ajax_referer('punchout_order_nonce', 'nonce'); // Check the nonce for security
-
-    /*
-    if ($session_manager->is_session_specific_user()) {
-
-        $session_id = $session_manager->get_current_session_id(); // Make sure this method exists and correctly retrieves the session ID
-
-        // Query the database to get the order_url
-        $order_url = $wpdb->get_var($wpdb->prepare(
-            "SELECT order_url FROM {$wpdb->prefix}cm_sessions WHERE session_id = %d",
-            $session_id
-        ));
-
-
-        $args = array(
-            'body' => array('oracleCart' => ''),
-            'timeout' => 45,
-            'redirection' => 5,
-            'httpversion' => '1.0',
-            'blocking' => true,
-            'headers' => array(
-                'Content-Type' => 'application/x-www-form-urlencoded; charset=ISO-8859-1'
-            ),
-            'cookies' => array()
-        );
-
-        $response = wp_remote_post($order_url, $args);    
-    
-
-         // Check if the request was successful
-        if (is_wp_error($response)) {
-            // Handle error
-            $error_message = $response->get_error_message();        
-            wp_send_json_error( "Failed to send PunchOutOrderMessage: $error_message");
-            return false;
-        } else {
-            // Handle success
-            setcookie('cm_session_key', '', time() - 3600, '/');
-            setcookie('cm_session_id', '', time() - 3600, '/');
-            wp_logout();
-    
-           
-        }
-
-
-        // 'redirect_url' => $order_url ? $order_url : home_url() ,
-        // $redirect_url = home_url().'/sesion-expirada/';
-        $response = array(
-            'success' => true,
-            'data' => array(
-                'redirect_url' => $order_url ? $order_url : home_url()  ,
-                'message' => 'Return successful.'
-            )
-        );
-    } else {
-        error_log('User not logged in.');
-        $response = array(
-            'success' => false,
-            'data' => array(
-                'message' => 'User not logged in.'
-            )
-        );
-    }
-
-    echo json_encode($response);
-
-    */
-    exit;
-
-
-}
-
 // User wise product restriction
 add_action('template_redirect', 'restrict_product_access');
 function restrict_product_access() {
@@ -1511,59 +1415,9 @@ function exclude_restricted_products($query) {
 }
 
 
-
-add_action('rest_api_init', function () {
-    register_rest_route('wc/v3', '/list_orders', array(
-        'methods' => 'GET',
-        'callback' => 'list_custom_orders',
-        'permission_callback' => 'custom_orders_permissions_check'
-    ));
-});
-
-
-function list_custom_orders($request) {
-    $args = array(
-        'limit' => -1,           // Setting limit to -1 to attempt fetching all orders
-        'return' => 'ids',       // Return only IDs for performance reasons
-        'paginate' => false      // Disable pagination
-    );
-
-    // Modify the query based on request parameters if needed
-    if (!empty($request['customer_id'])) {
-        $args['customer_id'] = $request['customer_id'];
-    }
-
-    $orders = wc_get_orders($args);
-    $order_data = [];
-
-    foreach ($orders as $order_id) {
-        $order = wc_get_order($order_id);
-        $order_date_cxml = $order->get_meta('_order_date_cxml');
-        $order_id_cxml = $order->get_meta('_order_id_cxml');
-
-        // Simplified order data example
-        $order_data[] = [
-            'id' => $order->get_id(),
-            'total' => $order->get_total(),
-            'date_completed' => $order->get_date_completed() ? $order->get_date_completed()->date('Y-m-d H:i:s') : 'N/A',
-            'status' => $order->get_status(),
-            'order_date_cxml' => $order_date_cxml ? (new DateTime($order_date_cxml))->format('Y-m-d') : 'N/A',
-            'order_id_cxml' => $order_id_cxml ? $order_id_cxml : 'N/A'
-        ];
-    }
-
-    return new WP_REST_Response($order_data, 200);
-}
-
-
-function custom_orders_permissions_check($request) {
-    return current_user_can('manage_woocommerce');
-}
-
-
 add_action('admin_enqueue_scripts', 'enqueue_custom_admin_styles');
 function enqueue_custom_admin_styles() {
-    wp_enqueue_style('cm-admin-css', get_stylesheet_directory_uri() . '/css/admin-style.css');
+    wp_enqueue_style('cm-admin-css', get_stylesheet_directory_uri() . '/css/admin/admin-style.css');
 }
 
 
@@ -1574,30 +1428,36 @@ function add_custom_order_meta_box() {
         __('Información de Pedido Punchout (cXML)', 'medilazar'), // Title of the meta box
         'custom_order_information_meta_box_content',     // Callback function to output content
         'shop_order',                                    // Post type
-        'normal',                                          // Context (where on the screen)
+        'normal',                                        // Context (where on the screen)
         'high'                                        // Priority
     );
 }
 
 function custom_order_information_meta_box_content($post) {
+
     $order = wc_get_order($post->ID);
     $order_id_cxml = $order->get_meta('_order_id_cxml', true);
     $order_date_cxml = $order->get_meta('_order_date_cxml', true);
-    $total = $order->get_meta('_order_total_cxml', true); // Example meta key
-    $sender = $order->get_meta('_order_sender_cxml', true); // Example meta key
+    $total = $order->get_meta('_order_total_cxml', true);
+    $sender = $order->get_meta('_order_sender_cxml', true);
 
     echo '<div class="punchout_order_meta">';
+    // Column 1: Order ID and Sender
     echo '<div class="order_meta_column">';
     echo '<p><strong>' . __('ID de Pedido :', 'medilazar') . '</strong> ' . esc_html($order_id_cxml) . '</p>';
-  
+    echo '<p><strong>' . __('Sender :', 'medilazar') . '</strong> ' . esc_html($sender) . '</p>';
     echo '</div>'; // Close column one
 
+    // Column 2: Order Date
     echo '<div class="order_meta_column">';
     echo '<p><strong>' . __('Fecha del Pedido :', 'medilazar') . '</strong> ' . esc_html($order_date_cxml) . '</p>';
     echo '</div>'; // Close column two
 
+    // Column 3: Total
     echo '<div class="order_meta_column">';
-    echo '<p><strong>' . __('Total:', 'medilazar') . '</strong> €300,00 ' . esc_html($total) . '</p>';
+    echo '<p><strong>' . __('Total :', 'medilazar') . '</strong> ' . esc_html($total) . '</p>';
     echo '</div>'; // Close column three
+
     echo '</div>'; // Close punchout_order_meta container
 }
+
