@@ -1461,3 +1461,89 @@ function custom_order_information_meta_box_content($post) {
     echo '</div>'; // Close punchout_order_meta container
 }
 
+
+// Custom Product Prices
+
+add_filter('woocommerce_product_get_price', 'custom_role_based_pricing', 99, 2);
+add_filter('woocommerce_product_get_regular_price', 'custom_role_based_pricing', 99, 2);
+
+function custom_role_based_pricing($price, $product) {
+    if (is_admin() && !defined('DOING_AJAX')) return $price;
+
+    $user = wp_get_current_user();
+
+    if (in_array('specific_role', $user->roles)) { // Replace 'specific_role' with the actual role ID
+        $agreed_price = get_post_meta($product->get_id(), 'agreed_price', true);
+        if (!empty($agreed_price)) {
+            return $agreed_price;
+        }
+
+        $fixed_discount = get_post_meta($product->get_id(), 'fixed_discount', true);
+        if (!empty($fixed_discount)) {
+            $discounted_price = $price - ($price * ($fixed_discount / 100));
+            return $discounted_price;
+        }
+
+        $price_request = get_post_meta($product->get_id(), 'price_request', true);
+        if ($price_request) {
+            return ''; // Return empty string for "Price on Request"
+        }
+    }
+
+    return $price; // Return default price if no conditions met
+}
+
+add_filter('woocommerce_is_purchasable', 'custom_purchasable_logic', 10, 2);
+function custom_purchasable_logic($purchasable, $product) {
+    $price_request = get_post_meta($product->get_id(), 'price_request', true);
+    if ($price_request) {
+        return true; // Ensure that products are purchasable even without a price
+    }
+    return $purchasable;
+}
+
+
+
+add_action('woocommerce_product_options_pricing', 'add_custom_rate_fields');
+function add_custom_rate_fields() {
+    echo '<div class="options_group">';
+
+    for ($i = 1; $i <= 3; $i++) { // Example for 3 different rates
+        woocommerce_wp_text_input(array(
+            'id' => 'discount_rate_' . $i,
+            'label' => sprintf(__('Discount Rate %d (%%):', 'your-text-domain'), $i),
+            'desc_tip' => 'true',
+            'description' => sprintf(__('Enter the discount rate %d.', 'your-text-domain'), $i),
+            'type' => 'number',
+            'custom_attributes' => array(
+                'step' => 'any',
+                'min' => '0'
+            ),
+        ));
+    }
+
+    echo '</div>';
+}
+
+
+add_action('woocommerce_admin_process_product_object', 'save_custom_rate_fields');
+function save_custom_rate_fields($product) {
+    for ($i = 1; $i <= 3; $i++) {
+        if (isset($_POST['discount_rate_' . $i])) {
+            $product->update_meta_data('discount_rate_' . $i, sanitize_text_field($_POST['discount_rate_' . $i]));
+        }
+    }
+}
+
+
+add_filter('woocommerce_product_get_price', 'apply_custom_discount_rates', 10, 2);
+function apply_custom_discount_rates($price, $product) {
+    $final_price = $price;
+    for ($i = 1; $i <= 3; $i++) {
+        $rate = $product->get_meta('discount_rate_' . $i);
+        if (!empty($rate)) {
+            $final_price -= ($final_price * ($rate / 100)); // Applying the discount rate
+        }
+    }
+    return $final_price;
+}
