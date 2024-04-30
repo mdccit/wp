@@ -1226,6 +1226,23 @@ add_action('rest_api_init', function () {
     ));
 });
 
+
+function format_address_from_cxml($address) {
+    $name = (string)$address->Name;
+    $streetLines = [];
+    foreach ($address->Street as $street) {
+        $streetLines[] = (string)$street;
+    }
+    $city = (string)$address->City;
+    $state = (string)$address->State;
+    $postalCode = (string)$address->PostalCode;
+    $country = (string)$address->Country;
+
+    return "$name, " . implode(", ", $streetLines) . ", $city, $state, $postalCode, $country";
+}
+
+
+// Create Manual Order From cXML
 function create_wc_order_from_cxml(WP_REST_Request $request) {
 
     global $cart_manager, $order_manager;
@@ -1315,6 +1332,22 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
                 $item->add_meta_data('Fecha de Entrega Solicitada', $requestedDeliveryDate, true);
                 $item->save_meta_data(); // Save the meta data changes
             }
+
+            if ($item) {
+                // Save delivery address details
+                $shipTo = $itemOut->ShipTo->Address;
+                $deliveryAddress = format_address_from_cxml($shipTo->PostalAddress);
+                $email = (string)$shipTo->Email;
+                $phone = (string)$shipTo->Phone->TelephoneNumber->Number;
+
+                $item->add_meta_data('Delivery Address', $deliveryAddress, true);
+                $item->add_meta_data('Email', $email, true);
+                $item->add_meta_data('Phone', $phone, true);
+
+                $item->save();
+            }
+
+
         }
 
              // Process Extrinsic elements for each ItemOut
@@ -1358,6 +1391,31 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
 
     return $order->get_id();
 }
+
+add_action('woocommerce_admin_order_item_headers', 'add_delivery_details_header');
+
+function add_delivery_details_header() {
+    echo '<th>Delivery Details</th>';
+}
+
+add_action('woocommerce_admin_order_item_values', 'display_delivery_details_admin', 10, 3);
+
+function display_delivery_details_admin($product, $item, $item_id) {
+    if ($item->get_type() === 'line_item') {
+        $deliveryAddress = $item->get_meta('Delivery Address', true);
+        $email = $item->get_meta('Email', true);
+        $phone = $item->get_meta('Phone', true);
+
+        echo '<td>';
+        echo '<p><strong>Address:</strong> ' . esc_html($deliveryAddress) . '</p>';
+        echo '<p><strong>Email:</strong> ' . esc_html($email) . '</p>';
+        echo '<p><strong>Phone:</strong> ' . esc_html($phone) . '</p>';
+        echo '</td>';
+    }
+}
+
+
+
 
 // User wise product restriction
 add_action('template_redirect', 'restrict_product_access');
