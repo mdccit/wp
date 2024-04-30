@@ -1464,6 +1464,8 @@ function custom_order_information_meta_box_content($post) {
 
 // Custom Product Prices
 
+
+/*
 add_filter('woocommerce_product_get_price', 'custom_role_based_pricing', 99, 2);
 add_filter('woocommerce_product_get_regular_price', 'custom_role_based_pricing', 99, 2);
 
@@ -1471,27 +1473,52 @@ function custom_role_based_pricing($price, $product) {
     if (is_admin() && !defined('DOING_AJAX')) return $price;
 
     $user = wp_get_current_user();
+    $fixed_discount = get_post_meta($product->get_id(), 'fixed_discount', true);
 
-    if (in_array('specific_role', $user->roles)) { // Replace 'specific_role' with the actual role ID
         $agreed_price = get_post_meta($product->get_id(), 'agreed_price', true);
         if (!empty($agreed_price)) {
             return $agreed_price;
         }
 
-        $fixed_discount = get_post_meta($product->get_id(), 'fixed_discount', true);
-        if (!empty($fixed_discount)) {
-            $discounted_price = $price - ($price * ($fixed_discount / 100));
-            return $discounted_price;
-        }
-
-        $price_request = get_post_meta($product->get_id(), 'price_request', true);
-        if ($price_request) {
-            return ''; // Return empty string for "Price on Request"
-        }
+    if (!empty($fixed_discount) && $fixed_discount > 0) {
+        $discounted_price = $price - ($price * ($fixed_discount / 100));
+        return $discounted_price;
     }
 
-    return $price; // Return default price if no conditions met
+    return $price;
 }
+
+*/
+
+// function custom_role_based_pricing($price, $product) {
+//     if (is_admin() && !defined('DOING_AJAX')) return $price;
+
+//     $user = wp_get_current_user();
+
+//     if (in_array('specific_role', $user->roles)) { // Replace 'specific_role' with the actual role ID
+//         $agreed_price = get_post_meta($product->get_id(), 'agreed_price', true);
+//         if (!empty($agreed_price)) {
+//             return $agreed_price;
+//         }
+
+//         $fixed_discount = get_post_meta($product->get_id(), 'fixed_discount', true);
+//         if (!empty($fixed_discount)) {
+//             $discounted_price = $price - ($price * ($fixed_discount / 100));
+//             return $discounted_price;
+//         }
+
+//         $price_request = get_post_meta($product->get_id(), 'price_request', true);
+//         if ($price_request) {
+//             return ''; // Return empty string for "Price on Request"
+//         }
+//     }
+
+//     return $price; // Return default price if no conditions met
+// }
+
+
+
+/*
 
 add_filter('woocommerce_is_purchasable', 'custom_purchasable_logic', 10, 2);
 function custom_purchasable_logic($purchasable, $product) {
@@ -1511,9 +1538,9 @@ function add_custom_rate_fields() {
     for ($i = 1; $i <= 3; $i++) { // Example for 3 different rates
         woocommerce_wp_text_input(array(
             'id' => 'discount_rate_' . $i,
-            'label' => sprintf(__('Discount Rate %d (%%):', 'your-text-domain'), $i),
+            'label' => sprintf(__('Discount Rate %d (%%):', 'medilazar'), $i),
             'desc_tip' => 'true',
-            'description' => sprintf(__('Enter the discount rate %d.', 'your-text-domain'), $i),
+            'description' => sprintf(__('Enter the discount rate %d.', 'medilazar'), $i),
             'type' => 'number',
             'custom_attributes' => array(
                 'step' => 'any',
@@ -1547,3 +1574,6 @@ function apply_custom_discount_rates($price, $product) {
     }
     return $final_price;
 }
+
+
+*/
