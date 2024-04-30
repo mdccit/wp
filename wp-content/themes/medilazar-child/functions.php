@@ -1394,19 +1394,22 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
 
 add_action('woocommerce_admin_order_item_headers', 'add_delivery_details_header');
 
+
 function add_delivery_details_header() {
-    echo '<th>Delivery Details</th>';
+    echo '<th>Delivery Details</th>'; // Ensure this is the only header being added
 }
 
 add_action('woocommerce_admin_order_item_values', 'display_delivery_details_admin', 10, 3);
 
 function display_delivery_details_admin($product, $item, $item_id) {
-    if ($item->get_type() === 'line_item') {
+    // Check if the product exists and the item is of type 'line_item'
+    if ($product && $item->get_type() === 'line_item') {
         $deliveryAddress = $item->get_meta('Delivery Address', true);
         $email = $item->get_meta('Email', true);
         $phone = $item->get_meta('Phone', true);
 
-        echo '<td>';
+        // Output only under the delivery details column
+        echo '<td class="delivery-details">';
         echo '<p><strong>Address:</strong> ' . esc_html($deliveryAddress) . '</p>';
         echo '<p><strong>Email:</strong> ' . esc_html($email) . '</p>';
         echo '<p><strong>Phone:</strong> ' . esc_html($phone) . '</p>';
