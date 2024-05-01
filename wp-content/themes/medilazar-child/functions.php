@@ -1392,30 +1392,40 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     return $order->get_id();
 }
 
+
+// Example code to check if meta data is being set correctly
 add_action('woocommerce_admin_order_item_headers', 'add_delivery_details_header');
 
-
 function add_delivery_details_header() {
-    echo '<th>Delivery Details</th>'; // Ensure this is the only header being added
+    echo '<th class="line_item_delivery">Delivery Details</th>'; // Adds a header for delivery details
 }
+
 
 add_action('woocommerce_admin_order_item_values', 'display_delivery_details_admin', 10, 3);
 
 function display_delivery_details_admin($product, $item, $item_id) {
-    // Check if the product exists and the item is of type 'line_item'
-    if ($product && $item->get_type() === 'line_item') {
-        $deliveryAddress = $item->get_meta('Delivery Address', true);
-        $email = $item->get_meta('Email', true);
-        $phone = $item->get_meta('Phone', true);
+    $deliveryAddress = $item->get_meta('Delivery Address', true);
+    $email = $item->get_meta('Email', true);
+    $phone = $item->get_meta('Phone', true);
 
-        // Output only under the delivery details column
+    if (!empty($deliveryAddress) || !empty($email) || !empty($phone)) {
         echo '<td class="delivery-details">';
-        echo '<p><strong>Address:</strong> ' . esc_html($deliveryAddress) . '</p>';
-        echo '<p><strong>Email:</strong> ' . esc_html($email) . '</p>';
-        echo '<p><strong>Phone:</strong> ' . esc_html($phone) . '</p>';
+        if (!empty($deliveryAddress)) {
+            echo '<p><strong>Address:</strong> ' . esc_html($deliveryAddress) . '</p>';
+        }
+        if (!empty($email)) {
+            echo '<p><strong>Email:</strong> ' . esc_html($email) . '</p>';
+        }
+        if (!empty($phone)) {
+            echo '<p><strong>Phone:</strong> ' . esc_html($phone) . '</p>';
+        }
         echo '</td>';
+    } else {
+        echo '<td>No details</td>'; // To check if there are no details or the function isn't firing
     }
 }
+
+
 
 
 
