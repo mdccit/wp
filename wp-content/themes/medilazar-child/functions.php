@@ -1243,6 +1243,19 @@ function format_address_from_cxml($address) {
 
 
 // Create Manual Order From cXML
+
+
+//Check permission
+function cm_add_wc_gateway_manual($methods) {
+    // if the user is an admin
+    if (current_user_can('manage_options')) {
+        $methods[] = 'CM_WC_Gateway_Manual';
+    }
+
+    return $methods;
+}
+add_filter('woocommerce_payment_gateways', 'cm_add_wc_gateway_manual');
+
 function create_wc_order_from_cxml(WP_REST_Request $request) {
 
     global $cart_manager, $order_manager;
@@ -1340,9 +1353,9 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
                 $email = (string)$shipTo->Email;
                 $phone = (string)$shipTo->Phone->TelephoneNumber->Number;
 
-                $item->add_meta_data('Delivery Address', $deliveryAddress, true);
-                $item->add_meta_data('Email', $email, true);
-                $item->add_meta_data('Phone', $phone, true);
+                $item->add_meta_data('Dirección de entrega', $deliveryAddress, true);
+                $item->add_meta_data('Correo electrónico', $email, true);
+                $item->add_meta_data('Teléfono', $phone, true);
 
                 $item->save();
             }
@@ -1411,13 +1424,13 @@ function display_delivery_details_admin($product, $item, $item_id) {
     if (!empty($deliveryAddress) || !empty($email) || !empty($phone)) {
         echo '<td class="delivery-details">';
         if (!empty($deliveryAddress)) {
-            echo '<p><strong>Address:</strong> ' . esc_html($deliveryAddress) . '</p>';
+            echo '<p><strong>Dirección de entrega:</strong> ' . esc_html($deliveryAddress) . '</p>';
         }
         if (!empty($email)) {
-            echo '<p><strong>Email:</strong> ' . esc_html($email) . '</p>';
+            echo '<p><strong>Correo electrónico:</strong> ' . esc_html($email) . '</p>';
         }
         if (!empty($phone)) {
-            echo '<p><strong>Phone:</strong> ' . esc_html($phone) . '</p>';
+            echo '<p><strong>Teléfono:</strong> ' . esc_html($phone) . '</p>';
         }
         echo '</td>';
     } else {
@@ -1426,6 +1439,17 @@ function display_delivery_details_admin($product, $item, $item_id) {
 }
 
 add_action('woocommerce_admin_order_item_values', 'display_delivery_details_admin', 10, 3);
+
+
+function custom_hide_order_itemmeta($hidden_meta_keys) {
+    // Add the keys you want to hide from admin order views
+    $hidden_meta_keys[] = 'Delivery Address';
+    $hidden_meta_keys[] = 'Email';
+    $hidden_meta_keys[] = 'Phone';
+
+    return $hidden_meta_keys;
+}
+add_filter('woocommerce_hidden_order_itemmeta', 'custom_hide_order_itemmeta');
 
 
 
@@ -1517,7 +1541,6 @@ function custom_order_information_meta_box_content($post) {
     // Column 1: Order ID and Sender
     echo '<div class="order_meta_column">';
     echo '<p><strong>' . __('ID de Pedido :', 'medilazar') . '</strong> ' . esc_html($order_id_cxml) . '</p>';
-    echo '<p><strong>' . __('Sender :', 'medilazar') . '</strong> ' . esc_html($sender) . '</p>';
     echo '</div>'; // Close column one
 
     // Column 2: Order Date
