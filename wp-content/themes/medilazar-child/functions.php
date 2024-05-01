@@ -1401,7 +1401,7 @@ function add_delivery_details_header() {
 }
 
 
-add_action('woocommerce_admin_order_item_values', 'display_delivery_details_admin', 10, 3);
+
 
 function display_delivery_details_admin($product, $item, $item_id) {
     $deliveryAddress = $item->get_meta('Delivery Address', true);
@@ -1425,6 +1425,7 @@ function display_delivery_details_admin($product, $item, $item_id) {
     }
 }
 
+add_action('woocommerce_admin_order_item_values', 'display_delivery_details_admin', 10, 3);
 
 
 
