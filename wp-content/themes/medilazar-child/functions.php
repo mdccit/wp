@@ -1385,7 +1385,7 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
 
         // Extract contact information
         $contact = $cxml->Request->OrderRequest->OrderRequestHeader->Contact;
-        if ($contact && $contact['role'] == "buyer") {
+        if ($contact) {
             $name = (string)$contact->Name;
             $email = (string)$contact->Email;
             $phone = (string)$contact->Phone->TelephoneNumber->Number;
@@ -1413,7 +1413,7 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
             $order->update_meta_data('Contact Country', $country);
 
             // Save changes to order
-            //   $order->save();
+              $order->save();
 
         }
 
@@ -1460,11 +1460,11 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
         }
 
              // Process Extrinsic elements for each ItemOut
-            foreach ($itemOut->ItemDetail->Extrinsic as $extrinsic) {
-                $name = (string)$extrinsic['name'];
-                $value = (string)$extrinsic;  
-                $order->update_meta_data('_item_extrinsic_' . $name, $value);
-            }         
+            // foreach ($itemOut->ItemDetail->Extrinsic as $extrinsic) {
+            //     $name = (string)$extrinsic['name'];
+            //     $value = (string)$extrinsic;  
+            //     $order->update_meta_data('_item_extrinsic_' . $name, $value);
+            // }         
     }
 
     // Set the calculated order total 
@@ -1491,20 +1491,29 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     $order->set_payment_method('cm_manual');  
 
     // $order->calculate_totals();
+    // $order->calculate_totals();
     $order->set_total(400);
-    $order->calculate_totals();
+    
+    $order->save(); 
+
     error_log('Order Total After Calculation: ' . $order->get_total());
 
     // $order->set_total($totalAmount); 
     $manual_payment_gateway = new CM_WC_Gateway_Manual();
    
     // Process payment and update order status
-    $manual_payment_gateway->process_payment($order->get_id()); 
+    $result = $manual_payment_gateway->process_payment($order->get_id());
+
+    if ($result['result'] == 'success') {
+        error_log('Manual payment completed.');
+    } else {
+        error_log('Manual payment failed.');
+    }
   
     $order->save();    
     error_log('Final Order Total: ' . $order->get_total());
 
-    return $order;
+    return $order->get_total();
 }
 
 

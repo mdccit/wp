@@ -25,7 +25,7 @@ class CM_WC_Gateway_Manual extends WC_Payment_Gateway {
         $this->init_settings();
 
         // Define user set variables
-        $this->title = $this->get_option('title', 'Manual Payment');
+        $this->title = $this->get_option('title', 'Direct Payment');
         $this->description = $this->get_option('description', 'Default description');
         $this->instructions = $this->get_option('instructions', $this->description);
 
@@ -69,17 +69,21 @@ class CM_WC_Gateway_Manual extends WC_Payment_Gateway {
      */
     public function process_payment($order_id) {
         $order = wc_get_order($order_id);
-    
-        // Reduce stock levels
-        wc_reduce_stock_levels($order_id);
 
-        $order->update_status('processing', esc_html__('Pago del pedido completado a través de la Pasarela de Pago Manual.', 'woocommerce'));
+        $payment_success = true; // Simulate payment success
 
-        // Return thankyou redirect
-        return array(
-            'result'   => 'success',
-            'redirect' => $this->get_return_url($order),
-        );
+        if ($payment_success) {
+            $order->payment_complete();
+            
+            // Reduce stock levels
+            wc_reduce_stock_levels($order_id);
+            $order->update_status('processing', esc_html__('Pago del pedido completado a través de la Pasarela de Pago Manual.', 'woocommerce'));
+
+            return array(
+                'result'   => 'success',
+                'redirect' => $this->get_return_url($order)
+            );
+        }  
     }
 
     
