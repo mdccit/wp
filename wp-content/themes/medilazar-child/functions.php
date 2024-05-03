@@ -1340,17 +1340,29 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     $orderType = (string) $cxml->Request->OrderRequest->OrderRequestHeader['orderType'];
     $Type = (string) $cxml->Request->OrderRequest->OrderRequestHeader['type'];
     $senderIdentity = (string) $cxml->Header->Sender->Credential->Identity;
+    $senderSecret = (string) $cxml->Header->Sender->Credential->SharedSecret;
     $totalAmount = (string) $cxml->Request->OrderRequest->OrderRequestHeader->Total->Money;
-    $currency = $cxml->Request->OrderRequest->OrderRequestHeader->Total->Money['currency'];
-  
+    // $currency = $cxml->Request->OrderRequest->OrderRequestHeader->Total->Money['currency'];
+    $currency = '€';
+    $contact = $cxml->Request->OrderRequest->OrderRequestHeader->Contact;
+     
+
     $cart_manager->insert_order_request_to_db($cxml_content, $orderID, $orderType, $Type, $senderIdentity, $orderDate);
+
+    // Get the user object based on the username
+    $user = get_user_by('login', $senderIdentity);
+
+           if (!$user) {
+               // Handle the case where the user does not exist
+               return new WP_Error('user_error', 'User not found', array('status' => 400));
+           }
    
 
-    // $shipTo = $cxml->Request->OrderRequest->OrderRequestHeader->ShipTo->Address;
-    // if (empty($shipTo) || empty($shipTo->PostalAddress->Street) || empty($shipTo->PostalAddress->City)) {
-    //     wp_send_json_error('Incomplete shipping address');
-    //     return;
-    // }
+        // Authenticate the user's password
+        if (!wp_check_password($senderSecret, $user->data->user_pass, $user->ID)) {
+            return new WP_Error('authentication_error', 'Invalid credentials', array('status' => 403));
+        }
+
 
         // Create a new order
         $order = wc_create_order();
@@ -1359,16 +1371,29 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
         foreach ($cxml->Request->OrderRequest->OrderRequestHeader->Extrinsic as $extrinsic) {
             $name = (string)$extrinsic['name'];
             $value = (string)$extrinsic;
-            $order->update_meta_data('_order_extrinsic_' . $name, $value);
+            if($value != ''){
+                $order->update_meta_data('_order_extrinsic_' . $name, $value);
+            }
+          
         }
 
-        // Get the user object based on the username
-        $user = get_user_by('login', $senderIdentity);
-
-        if (!$user) {
-            // Handle the case where the user does not exist
-            return new WP_Error('user_error', 'User not found', array('status' => 400));
-        }
+               // Extract contact information
+ 
+               $name = (string)$contact->Name;
+               $email = (string)$contact->Email;
+               $phone = (string)$contact->Phone->TelephoneNumber->Number;
+               // Address parsing
+               $address = $contact->PostalAddress;
+               $street_lines = [];
+                   foreach ($address->Street as $street) {
+                       if (!empty($street)) {
+                           $street_lines[] = (string)$street;
+                       }
+                   }
+               $street_full = implode(", ", $street_lines);
+               $city = (string)$address->City;
+               $postcode = (string)$address->PostalCode;
+               $country = (string)$address->Country['isoCountryCode'];
 
          // Set the customer for the order
         $order->set_customer_id($user->ID);
@@ -1378,45 +1403,18 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
         $order->update_meta_data('_order_sender_cxml', $senderIdentity);
         $order->update_meta_data('_order_type_cxml', $orderType);
         $order->update_meta_data('_order_currency_cxml', $currency);
-        $order->update_meta_data('_created_via_cxml', true);
+        $order->update_meta_data('_created_via_cxml', true); 
+ 
+        // Save contact details to order meta
+        $order->update_meta_data('_contact_name_xml', ' Mobre'.$name);
+        $order->update_meta_data('Contact Email', $email);
+        $order->update_meta_data('Contact Phone', $phone);
+        $order->update_meta_data('Contact Street', $street_full);
+        $order->update_meta_data('Contact City', $city);
+        $order->update_meta_data('Contact Postal Code', $postcode);
+        $order->update_meta_data('Contact Country', $country);
 
         $order_manager->update_order_meta_from_cxml($order, $senderIdentity, $totalAmount, $currency, $orderID);
-
-
-        // Extract contact information
-        $contact = $cxml->Request->OrderRequest->OrderRequestHeader->Contact;
-        if ($contact) {
-            $name = (string)$contact->Name;
-            $email = (string)$contact->Email;
-            $phone = (string)$contact->Phone->TelephoneNumber->Number;
-
-            // Address parsing
-            $address = $contact->PostalAddress;
-            $street_lines = [];
-            foreach ($address->Street as $street) {
-                if (!empty($street)) {
-                    $street_lines[] = (string)$street;
-                }
-            }
-            $street_full = implode(", ", $street_lines);
-            $city = (string)$address->City;
-            $postcode = (string)$address->PostalCode;
-            $country = (string)$address->Country['isoCountryCode'];
-
-            // Save contact details to order meta
-            $order->update_meta_data('Contact Name', $name);
-            $order->update_meta_data('Contact Email', $email);
-            $order->update_meta_data('Contact Phone', $phone);
-            $order->update_meta_data('Contact Street', $street_full);
-            $order->update_meta_data('Contact City', $city);
-            $order->update_meta_data('Contact Postal Code', $postcode);
-            $order->update_meta_data('Contact Country', $country);
-
-            // Save changes to order
-              $order->save();
-
-        }
-
 
     $order_total = 0;
 
@@ -1467,11 +1465,6 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
             // }         
     }
 
-    // Set the calculated order total 
- 
-    // $order->calculate_taxes();
-
-
    // Set shipping address
     $shipTo = $cxml->Request->OrderRequest->OrderRequestHeader->ShipTo->Address;
     $shippingAddress = $cart_manager->set_order_address_from_cxml($shipTo);
@@ -1491,8 +1484,7 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     $order->set_payment_method('cm_manual');  
 
     // $order->calculate_totals();
-    // $order->calculate_totals();
-    $order->set_total(400);
+    $order->set_total($totalAmount);
     
     $order->save(); 
 
@@ -1650,7 +1642,7 @@ function custom_order_information_meta_box_content($post) {
     $sender = $order->get_meta('_order_sender_cxml', true);
 
         // Retrieve contact details from order meta
-        $contact_name = $order->get_meta('Contact Name');
+        $contact_name = $order->get_meta('_contact_name_xml');
         $contact_email = $order->get_meta('Contact Email');
         $contact_phone = $order->get_meta('Contact Phone');
         $contact_street = $order->get_meta('Contact Street');
