@@ -1416,7 +1416,8 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
       $order->update_meta_data('Contact Country', $country);
 
       // Save changes to order
-      $order->save();
+    //   $order->save();
+
   }
 
 
@@ -1459,7 +1460,6 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
                 $item->save();
             }
 
-
         }
 
              // Process Extrinsic elements for each ItemOut
@@ -1471,9 +1471,8 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     }
 
     // Set the calculated order total 
-    $order->set_total($totalAmount);  
+ 
     // $order->calculate_taxes();
-    // $order->calculate_totals();
 
 
    // Set shipping address
@@ -1493,13 +1492,20 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     // Assuming shipping is free and no additional calculations are needed    
 
     $order->set_payment_method('cm_manual');  
+
+    // $order->calculate_totals();
+    $order->set_total(400);
+    error_log('Order Total After Calculation: ' . $order->get_total());
+
+    // $order->set_total($totalAmount); 
     $manual_payment_gateway = new CM_WC_Gateway_Manual();
    
     // Process payment and update order status
     $manual_payment_gateway->process_payment($order->get_id()); 
 
-    error_log($order->get_total());
+
     $order->save();    
+    error_log('Final Order Total: ' . $order->get_total());
 
     return $order->get_id();
 }
