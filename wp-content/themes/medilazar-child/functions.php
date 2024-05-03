@@ -1094,6 +1094,13 @@ function get_complete_punchout_order_cxml() {
         return ['error' => 'Failed to generate cXML data'];
     }
 
+    // Update the session status before logging out
+    $wpdb->update(
+        $table_name,
+        ['session_status' => 'order_created'],
+        ['session_id' => $session_id]
+    );
+
     setcookie('cm_session_key', '', time() - 3600, '/');
     setcookie('cm_session_id', '', time() - 3600, '/');
     wp_logout();
@@ -1129,6 +1136,46 @@ function get_punchout_return_url() {
 
     return [ 'orderUrl' => $order_url];
 }
+
+function delete_expired_cm_sessions() {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'cm_sessions';
+
+    error_log('Cron the wp_cm_sessions table.');
+
+    // Current date minus 7 days
+    $date_threshold = date('Y-m-d H:i:s', strtotime('-7 days'));
+
+    // SQL to delete old sessions not marked as 'order_created'
+    $sql = $wpdb->prepare("DELETE FROM $table_name WHERE session_status <> %s AND expires_at < %s", 'order_created', $date_threshold);
+
+    // Execute the query
+    $result = $wpdb->query($sql);
+
+    if ($result === false) {
+        // Handle error; SQL query failed to execute
+        error_log('Failed to delete expired sessions from the wp_cm_sessions table.');
+    } else {
+        // Success, output number of rows affected
+        error_log('Deleted ' . $result . ' expired sessions from the wp_cm_sessions table.');
+    }
+}
+
+if (!wp_next_scheduled('my_custom_delete_hook')) {
+    wp_schedule_event(time(), 'every_minute', 'my_custom_delete_hook');
+}
+
+add_action('my_custom_delete_hook', 'delete_expired_cm_sessions');
+
+
+function add_custom_cron_interval($schedules) {
+    $schedules['every_minute'] = array(
+        'interval' => 60, // Interval in seconds
+        'display'  => esc_html__('Every Minute'), // Display name for the interval
+    );
+    return $schedules;
+}
+add_filter('cron_schedules', 'add_custom_cron_interval');
 
 
 
@@ -1256,6 +1303,18 @@ function cm_add_wc_gateway_manual($methods) {
 }
 add_filter('woocommerce_payment_gateways', 'cm_add_wc_gateway_manual');
 
+
+// //Change the receipient of the emails
+// function change_new_order_email_recipient($recipient, $order) {
+//     // Ensure that you only modify the recipient for orders created via your cXML function
+//     if (is_a($order, 'WC_Order') && $order->get_meta('_created_via_cxml')) {
+//         $new_recipient = 'custom@example.com';  // Specify the new email address here
+//         return $new_recipient;
+//     }
+//     return $recipient;
+// }
+// add_filter('woocommerce_email_recipient_new_order', 'change_new_order_email_recipient', 10, 2);
+
 function create_wc_order_from_cxml(WP_REST_Request $request) {
 
     global $cart_manager, $order_manager;
@@ -1318,8 +1377,48 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     $order->update_meta_data('_order_total_cxml', $totalAmount);
     $order->update_meta_data('_order_sender_cxml', $senderIdentity);
     $order->update_meta_data('_order_type_cxml', $orderType);
+    $order->update_meta_data('_order_currency_cxml', $currency);
+    $order->update_meta_data('_created_via_cxml', true);
 
     $order_manager->update_order_meta_from_cxml($order, $senderIdentity, $totalAmount, $currency, $orderID);
+
+
+    // Save contact details from cXML to the WooCommerce order
+ //   save_contact_details_from_cxml($cxml, $order);
+
+  // Extract contact information
+  $contact = $cxml->Request->OrderRequest->OrderRequestHeader->Contact;
+  if ($contact && $contact['role'] == "buyer") {
+      $name = (string)$contact->Name;
+      $email = (string)$contact->Email;
+      $phone = (string)$contact->Phone->TelephoneNumber->Number;
+
+      // Address parsing
+      $address = $contact->PostalAddress;
+      $street_lines = [];
+      foreach ($address->Street as $street) {
+          if (!empty($street)) {
+              $street_lines[] = (string)$street;
+          }
+      }
+      $street_full = implode(", ", $street_lines);
+      $city = (string)$address->City;
+      $postcode = (string)$address->PostalCode;
+      $country = (string)$address->Country['isoCountryCode'];
+
+      // Save contact details to order meta
+      $order->update_meta_data('Contact Name', $name);
+      $order->update_meta_data('Contact Email', $email);
+      $order->update_meta_data('Contact Phone', $phone);
+      $order->update_meta_data('Contact Street', $street_full);
+      $order->update_meta_data('Contact City', $city);
+      $order->update_meta_data('Contact Postal Code', $postcode);
+      $order->update_meta_data('Contact Country', $country);
+
+      // Save changes to order
+      $order->save();
+  }
+
 
     $order_total = 0;
 
@@ -1372,9 +1471,9 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     }
 
     // Set the calculated order total 
-    // $order->set_total($order_total);  
-    $order->calculate_taxes();
-    $order->calculate_totals();
+    $order->set_total($totalAmount);  
+    // $order->calculate_taxes();
+    // $order->calculate_totals();
 
 
    // Set shipping address
@@ -1412,8 +1511,6 @@ add_action('woocommerce_admin_order_item_headers', 'add_delivery_details_header'
 function add_delivery_details_header() {
     echo '<th class="line_item_delivery">Delivery Details</th>'; // Adds a header for delivery details
 }
-
-
 
 
 function display_delivery_details_admin($product, $item, $item_id) {
@@ -1532,26 +1629,61 @@ function add_custom_order_meta_box() {
 function custom_order_information_meta_box_content($post) {
 
     $order = wc_get_order($post->ID);
+    $order_meta_data = $order->get_meta_data();
+    $extrinsic_data = [];
     $order_id_cxml = $order->get_meta('_order_id_cxml', true);
     $order_date_cxml = $order->get_meta('_order_date_cxml', true);
     $total = $order->get_meta('_order_total_cxml', true);
+    $currency = $order->get_meta('_order_currency_cxml', true);
     $sender = $order->get_meta('_order_sender_cxml', true);
+
+        // Retrieve contact details from order meta
+        $contact_name = $order->get_meta('Contact Name');
+        $contact_email = $order->get_meta('Contact Email');
+        $contact_phone = $order->get_meta('Contact Phone');
+        $contact_street = $order->get_meta('Contact Street');
+        $contact_city = $order->get_meta('Contact City');
+        $contact_postal_code = $order->get_meta('Contact Postal Code');
+        $contact_country = $order->get_meta('Contact Country');
+
+        foreach ($order_meta_data as $meta) {
+            if (strpos($meta->key, '_order_extrinsic_') === 0 && !empty($meta->value)) {
+                $extrinsic_data[$meta->key] = $meta->value;
+            }
+        }
 
     echo '<div class="punchout_order_meta">';
     // Column 1: Order ID and Sender
     echo '<div class="order_meta_column">';
     echo '<p><strong>' . __('ID de Pedido :', 'medilazar') . '</strong> ' . esc_html($order_id_cxml) . '</p>';
+    echo '<p><strong>' . __('Fecha del Pedido :', 'medilazar') . '</strong> ' . esc_html($order_date_cxml) . '</p>';
+    echo '<p><strong>' . __('Total del pedido :', 'medilazar') . '</strong> ' . esc_html($currency) .'' . esc_html($total) . '</p>';
     echo '</div>'; // Close column one
 
     // Column 2: Order Date
     echo '<div class="order_meta_column">';
-    echo '<p><strong>' . __('Fecha del Pedido :', 'medilazar') . '</strong> ' . esc_html($order_date_cxml) . '</p>';
+    echo '<p><strong>'. __('Nombre de contacto:', 'medilazar') .'</strong> ' . esc_html($contact_name) . '</p>';
+    echo '<p><strong>'. __('Correo electrónico:', 'medilazar') .'</strong> ' . esc_html($contact_email) . '</p>';
+    echo '<p><strong>'. __('Teléfono:', 'medilazar') .'</strong> ' . esc_html($contact_phone) . '</p>';
+    echo '<p><strong>'. __('Calle:', 'medilazar') .'</strong> ' . esc_html($contact_street) . '</p>';
+    echo '<p><strong>'. __('Ciudad:', 'medilazar') .'</strong> ' . esc_html($contact_city) . '</p>';
+    echo '<p><strong>'. __('Código Postal:', 'medilazar') .'</strong> ' . esc_html($contact_postal_code) . '</p>';
+    echo '<p><strong>'. __('País:', 'medilazar') .'</strong> ' . esc_html($contact_country) . '</p>';
     echo '</div>'; // Close column two
 
-    // Column 3: Total
-    echo '<div class="order_meta_column">';
-    echo '<p><strong>' . __('Total :', 'medilazar') . '</strong> ' . esc_html($total) . '</p>';
-    echo '</div>'; // Close column three
+    // Column 3: Extrinsic
+    if (!empty($extrinsic_data)) {
+        echo '<div class="order_meta_column">';
+        foreach ($extrinsic_data as $key => $value) {
+            // Format the key to a more readable format if necessary
+            $formatted_key = ucwords(str_replace('_', ' ', str_replace('_order_extrinsic_', '', $key)));
+            echo '<p><strong>' . esc_html($formatted_key) . ':</strong> ' . esc_html($value) . '</p>';
+        }
+        echo '</div>';
+    } else {
+        echo '<p>No extrinsic data available.</p>';
+    }
+  
 
     echo '</div>'; // Close punchout_order_meta container
 }
