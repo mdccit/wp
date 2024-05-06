@@ -1288,6 +1288,11 @@ function format_address_from_cxml($address) {
     return "$name, " . implode(", ", $streetLines) . ", $city, $state, $postalCode, $country";
 }
 
+function get_woocommerce_admin_email() {
+    // Default to general admin email
+    $admin_email = get_option('admin_email');
+    return $admin_email;
+}
 
 // Create Manual Order From cXML
 
@@ -1360,6 +1365,22 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
 
         // Authenticate the user's password
         if (!wp_check_password($senderSecret, $user->data->user_pass, $user->ID)) {
+
+            // Prepare the email message
+            $admin_email = get_woocommerce_admin_email(); 
+      
+            error_log($admin_email);
+            $to = 'ashan.rajapaksha@qualitapps.com';
+            $subject = 'Authentication Failed for cXML Order';
+            $message = "Failed authentication attempt for user: $senderIdentity.\n\n";
+            $message .= "Here is the cXML content received:\n";
+            $message .= htmlentities($cxml_content);  // Encode to display XML tags in HTML email
+            $headers = array('Content-Type: text/html; charset=UTF-8');
+
+            // Send the email to admin
+            wp_mail($to, $subject, nl2br($message), $headers);
+
+
             return new WP_Error('authentication_error', 'Invalid credentials', array('status' => 403));
         }
 
@@ -1808,3 +1829,33 @@ function apply_custom_discount_rates($price, $product) {
 
 
 */
+
+add_filter('woocommerce_account_menu_items', 'modify_account_menu_items', 9999);
+function modify_account_menu_items($items) {
+    global $session_manager;
+    if ($session_manager->is_session_specific_user()) {
+        unset($items['dashboard']);
+        unset($items['orders']);
+        unset($items['downloads']);
+        unset($items['edit-account']);
+        unset($items['customer-logout']);
+    }
+    return $items;
+}
+
+global $wp_filter;
+if (isset($wp_filter['woocommerce_account_menu_items'])) {
+    unset($wp_filter['woocommerce_account_menu_items']->callbacks);
+}
+add_filter('woocommerce_account_menu_items', 'modify_account_menu_items', 9999);
+
+
+add_filter('woocommerce_account_menu_items', function($items) {
+    error_log('Before Custom Filter: ' . print_r($items, true));
+    return $items;
+}, 1);  // Very early
+
+add_filter('woocommerce_account_menu_items', function($items) {
+    error_log('After Custom Filter: ' . print_r($items, true));
+    return $items;
+}, 9999); // Very late
