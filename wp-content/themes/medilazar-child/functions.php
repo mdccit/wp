@@ -1368,12 +1368,11 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
 
             // Prepare the email message
             $admin_email = get_woocommerce_admin_email(); 
-      
-            error_log($admin_email);
-            $to = 'ashan.rajapaksha@qualitapps.com';
-            $subject = 'Authentication Failed for cXML Order';
-            $message = "Failed authentication attempt for user: $senderIdentity.\n\n";
-            $message .= "Here is the cXML content received:\n";
+
+            $to = $admin_email;
+            $subject = 'Autenticación fallida para orden cXML';
+            $message = "Intento fallido de autenticación para usuario: $senderIdentity.\n\n";
+            $message .= "Este es el contenido cXML recibido:\n";
             $message .= htmlentities($cxml_content);  // Encode to display XML tags in HTML email
             $headers = array('Content-Type: text/html; charset=UTF-8');
 
@@ -1381,7 +1380,7 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
             wp_mail($to, $subject, nl2br($message), $headers);
 
 
-            return new WP_Error('authentication_error', 'Invalid credentials', array('status' => 403));
+            return new WP_Error('authentication_error', 'Credenciales inválidas.', array('status' => 403));
         }
 
 
@@ -1830,32 +1829,70 @@ function apply_custom_discount_rates($price, $product) {
 
 */
 
-add_filter('woocommerce_account_menu_items', 'modify_account_menu_items', 9999);
-function modify_account_menu_items($items) {
-    global $session_manager;
-    if ($session_manager->is_session_specific_user()) {
-        unset($items['dashboard']);
-        unset($items['orders']);
-        unset($items['downloads']);
-        unset($items['edit-account']);
-        unset($items['customer-logout']);
+function redirect_customers_from_myaccount() {
+    if (is_account_page()) {
+        if (current_user_can('customer')) {
+            wp_redirect(home_url()); // Redirect to the homepage
+            exit;
+        }
+    }
+}
+add_action('template_redirect', 'redirect_customers_from_myaccount');
+
+function remove_my_account_links_for_customers($items, $menu, $args) {
+    if (current_user_can('customer')) {
+        foreach ($items as $key => $item) {
+            if ($item->url === wc_get_page_permalink('myaccount')) {
+                unset($items[$key]);
+            }
+        }
     }
     return $items;
 }
+add_filter('wp_get_nav_menu_items', 'remove_my_account_links_for_customers', 10, 3);
 
-global $wp_filter;
-if (isset($wp_filter['woocommerce_account_menu_items'])) {
-    unset($wp_filter['woocommerce_account_menu_items']->callbacks);
+
+add_filter('woocommerce_cart_needs_shipping', 'remove_shipping_for_session_specific_users', 10, 1);
+function remove_shipping_for_session_specific_users($needs_shipping) {
+    // Access the session variable
+    global $session_manager;  
+    $session_specific_user = $session_manager->is_session_specific_user();
+
+    // Check for your specific condition here
+    if ($session_specific_user) {
+        return false; // Disable shipping calculation
+    }
+
+    return $needs_shipping; // Otherwise, continue as normal
 }
-add_filter('woocommerce_account_menu_items', 'modify_account_menu_items', 9999);
+
+add_filter('woocommerce_coupons_enabled', 'remove_coupons_for_session_specific_users', 10, 1);
+function remove_coupons_for_session_specific_users($enabled) {
+    // Access the session variable using a global session manager or WooCommerce session
+    global $session_manager;
+    $session_specific_user = $session_manager->is_session_specific_user(); // Adjust this function to your session manager implementation
+
+    // Disable coupons for session-specific users
+    if ($session_specific_user) {
+        return false; // Disable coupon usage
+    }
+
+    return $enabled; // Otherwise, enable coupons as usual
+}
 
 
-add_filter('woocommerce_account_menu_items', function($items) {
-    error_log('Before Custom Filter: ' . print_r($items, true));
+add_filter('wp_get_nav_menu_items', 'remove_contacto_menu_item', 10, 3);
+function remove_contacto_menu_item($items, $menu, $args) {
+    global $session_manager;
+    $session_specific_user = $session_manager->is_session_specific_user(); // Adjust this based on your session check
+
+    if ($session_specific_user) {
+        foreach ($items as $key => $item) {
+            if ($item->title == "Contacto") { // Check for the title of the menu item
+                unset($items[$key]);
+            }
+        }
+    }
+
     return $items;
-}, 1);  // Very early
-
-add_filter('woocommerce_account_menu_items', function($items) {
-    error_log('After Custom Filter: ' . print_r($items, true));
-    return $items;
-}, 9999); // Very late
+}
