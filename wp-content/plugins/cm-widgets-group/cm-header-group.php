@@ -13,5 +13,5 @@ add_action('elementor/widgets/widgets_registered', function ($widgets_manager) {
     require_once(__DIR__ . '/widgets/cm-header-widget-group.php');
 
     // Register the widget class
-    $widgets_manager->register(new \Elementor\Custom_Header_Group_Widget());
+    $widgets_manager->register(new \CM_Widgets_Group\CM_Header_Group_Widget());
 });
