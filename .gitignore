@@ -64,4 +64,5 @@ wp-content/wflogs/*
 
 # Allow only the medilazar-core plugin
 !wp-content/plugins/medilazar-core/
+!wp-content/plugins/cm-wdigets
 setup.sh
