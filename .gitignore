@@ -60,5 +60,8 @@ Thumbs.db
 .ssh/
 
 wp-content/plugins/*
+wp-content/wflogs/*
 
+# Allow only the medilazar-core plugin
+!wp-content/plugins/medilazar-core/
 setup.sh
