@@ -7,11 +7,16 @@ Author: Qualitapps
 Author URI: https://qualitapps.com
 */
 
+// Ensure WordPress environment is properly loaded.
+if (!defined('ABSPATH')) {
+    exit; // Exit if accessed directly.
+}
+
 // Register the custom widget with Elementor
 add_action('elementor/widgets/widgets_registered', function ($widgets_manager) {
-    // Include the widget class file
+    // Include the widget class file using the correct Elementor namespace.
     require_once(__DIR__ . '/widgets/cm-header-widget-group.php');
 
-    // Register the widget class
-    $widgets_manager->register(new \CM_Widgets_Group\CM_Header_Group_Widget());
+    // Register the widget class.
+    $widgets_manager->register(new \Elementor\CM_Header_Group_Widget());
 });
