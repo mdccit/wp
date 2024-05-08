@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 // Register the custom widget with Elementor
 add_action('elementor/widgets/widgets_registered', function ($widgets_manager) {
     require_once plugin_dir_path(__FILE__) . 'widgets/cm-header-widget-group.php';
-
-    // Register with fully qualified namespace
+  
     $widgets_manager->register(new OSF_Elementor_Header_Group());
+  
 });
