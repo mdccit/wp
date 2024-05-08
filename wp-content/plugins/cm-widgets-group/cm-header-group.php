@@ -2,7 +2,7 @@
 /*
 Plugin Name: Cm Widgets
 Description: A custom header widget to replace the Elementor header widget.
-Version: 1.0
+Version: 1.1
 Author: Qualitapps
 Author URI: https://qualitapps.com
 */

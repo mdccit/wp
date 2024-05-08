@@ -19,7 +19,7 @@ class OSF_Elementor_Header_Group   extends Widget_Base {
     }
 
     public function get_title() {
-        return __('Opal Header Group', 'medilazar-core');
+        return __('Opal Header Group New', 'medilazar-core');
     }
 
     public function get_icon() {
@@ -2442,11 +2442,14 @@ class OSF_Elementor_Header_Group   extends Widget_Base {
             echo '</div>';
         }
 
+        /*
         if ($settings['show_account'] == 'yes') {
             // echo '<div class="account">';
             // $this->render_account();
             // echo '</div>';
         }
+
+        */
 
         if ($settings['show_cart'] == 'yes') {
             echo '<div class="cart-woocommerce">';
