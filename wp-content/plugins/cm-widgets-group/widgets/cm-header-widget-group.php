@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
-class OSF_Elementor_Header_Group  extends Widget_Base {
+class CM_Header_Group_Widget   extends Widget_Base {
 
     public function get_name() {
         return 'opal-header-group';
