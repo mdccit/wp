@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
-class CM_Header_Group_Widget   extends Widget_Base {
+class OSF_Elementor_Header_Group   extends Widget_Base {
 
     public function get_name() {
         return 'opal-header-group';
@@ -2443,9 +2443,9 @@ class CM_Header_Group_Widget   extends Widget_Base {
         }
 
         if ($settings['show_account'] == 'yes') {
-            echo '<div class="account">';
-            $this->render_account();
-            echo '</div>';
+            // echo '<div class="account">';
+            // $this->render_account();
+            // echo '</div>';
         }
 
         if ($settings['show_cart'] == 'yes') {
@@ -2659,7 +2659,7 @@ class CM_Header_Group_Widget   extends Widget_Base {
 
 
     protected function render_dashboard() { ?>
-        <?php if (has_nav_menu('my-account')) : ?>
+          <?php if (has_nav_menu('my-account')) : ?>
             <nav class="social-navigation" role="navigation" aria-label="<?php esc_attr_e('Dashboard', 'medilazar-core'); ?>">
                 <?php
                 wp_nav_menu(array(
@@ -2670,7 +2670,33 @@ class CM_Header_Group_Widget   extends Widget_Base {
                 ?>
             </nav><!-- .social-navigation -->
         <?php else: ?>
+            <ul class="account-dashboard">
 
+                <?php if (osf_is_woocommerce_activated()): ?>
+                    <li>
+                        <a href="<?php echo esc_url(wc_get_page_permalink('myaccount')); ?>" title="<?php esc_html_e('Dashboard', 'medilazar-core'); ?>"><?php esc_html_e('Dashboard', 'medilazar-core'); ?></a>
+                    </li>
+                    <li>
+                        <a href="<?php echo esc_url(wc_get_account_endpoint_url('orders')); ?>" title="<?php esc_html_e('Orders', 'medilazar-core'); ?>"><?php esc_html_e('Orders', 'medilazar-core'); ?></a>
+                    </li>
+                    <li>
+                        <a href="<?php echo esc_url(wc_get_account_endpoint_url('downloads')); ?>" title="<?php esc_html_e('Downloads', 'medilazar-core'); ?>"><?php esc_html_e('Downloads', 'medilazar-core'); ?></a>
+                    </li>
+                    <li>
+                        <a href="<?php echo esc_url(wc_get_account_endpoint_url('edit-address')); ?>" title="<?php esc_html_e('Edit Address', 'medilazar-core'); ?>"><?php esc_html_e('Edit Address', 'medilazar-core'); ?></a>
+                    </li>
+                    <li>
+                        <a href="<?php echo esc_url(wc_get_account_endpoint_url('edit-account')); ?>" title="<?php esc_html_e('Account Details', 'medilazar-core'); ?>"><?php esc_html_e('Account Details', 'medilazar-core'); ?></a>
+                    </li>
+                <?php else: ?>
+                    <li>
+                        <a href="<?php echo esc_url(get_dashboard_url(get_current_user_id())); ?>" title="<?php esc_html_e('Dashboard', 'medilazar-core'); ?>"><?php esc_html_e('Dashboard', 'medilazar-core'); ?></a>
+                    </li>
+                <?php endif; ?>
+                <li>
+                    <a title="<?php esc_html_e('Log out', 'medilazar-core'); ?>" class="tips" href="<?php echo esc_url(wp_logout_url(home_url())); ?>"><?php esc_html_e('Log Out', 'medilazar-core'); ?></a>
+                </li>
+            </ul>
         <?php endif;
 
     }
