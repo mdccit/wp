@@ -1,17 +1,18 @@
 <?php
 
-namespace Elementor;
+namespace CM_Widgets_Group;
 
 use Elementor\Controls_Manager;
 use Elementor\Group_Control_Box_Shadow;
 use Elementor\Group_Control_Typography;
 use Elementor\Group_Control_Border;
+use Elementor\Widget_Base;
 
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
-class CM_Header_Group_Widget extends Widget_Base {
+class OSF_Elementor_Header_Group  extends Widget_Base {
 
     public function get_name() {
         return 'opal-header-group';
