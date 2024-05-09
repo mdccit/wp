@@ -1256,6 +1256,51 @@ function display_shipping_email_in_order_admin($order){
 add_action('woocommerce_admin_order_data_after_shipping_address', 'display_shipping_email_in_order_admin', 10, 1);
 
 
+// Add JavaScript to hide the billing email in the WooCommerce order edit screen based on a condition
+add_action('admin_footer', 'conditionally_hide_billing_email_in_order_edit_js');
+
+function conditionally_hide_billing_email_in_order_edit_js() {
+    // Check if we're on the WooCommerce order edit screen
+    $screen = get_current_screen();
+    if ($screen && 'shop_order' === $screen->id) {
+        // Get the current order ID
+        $order_id = isset($_GET['post']) ? intval($_GET['post']) : 0;
+        error_log('Order ID :'. $order_id);
+        if ($order_id) {
+            // Fetch the WooCommerce order object
+            $order = wc_get_order($order_id);
+       
+            // Check for the custom meta value (adjust the meta key to match your implementation)
+            if ($order->get_meta('_created_via_cxml')) {
+                // Output JavaScript to hide the billing email
+                echo '
+                <script type="text/javascript">
+                jQuery(document).ready(function($) {
+                    // Select the email paragraph under billing details and hide it
+                    var billingEmail = $(".order_data_column h3:contains(\'Billing\')").next(".address").find("p:contains(\'Email address:\')");
+                    billingEmail.hide();
+                });
+                </script>
+                ';
+            }
+        }
+    }
+}
+
+
+
+function display_billing_email_in_order_admin($order){
+    $shipping_email = $order->get_meta('_shipping_email');
+    if (!empty($shipping_email)) {
+        echo '<p><strong>' . __('Email Address') . ':</strong> ' . esc_html($shipping_email) . '</p>';
+    }
+}
+
+add_action('woocommerce_admin_order_data_after_billing_address', 'display_billing_email_in_order_admin', 10, 1);
+
+
+
+
 /**
  * Add the gateway to WooCommerce.
  */
@@ -1309,16 +1354,17 @@ function cm_add_wc_gateway_manual($methods) {
 add_filter('woocommerce_payment_gateways', 'cm_add_wc_gateway_manual');
 
 
+// Custom function to identify orders created via cXML
 // //Change the receipient of the emails
-// function change_new_order_email_recipient($recipient, $order) {
-//     // Ensure that you only modify the recipient for orders created via your cXML function
-//     if (is_a($order, 'WC_Order') && $order->get_meta('_created_via_cxml')) {
-//         $new_recipient = 'custom@example.com';  // Specify the new email address here
-//         return $new_recipient;
-//     }
-//     return $recipient;
-// }
-// add_filter('woocommerce_email_recipient_new_order', 'change_new_order_email_recipient', 10, 2);
+function change_new_order_email_recipient($recipient, $order) {
+    // Ensure that you only modify the recipient for orders created via your cXML function
+    if (is_a($order, 'WC_Order') && $order->get_meta('_created_via_cxml')) {
+        $new_recipient = get_option('admin_email');  
+        return $new_recipient;
+    }
+    return $recipient;
+}
+add_filter('woocommerce_email_recipient_new_order', 'change_new_order_email_recipient', 10, 2);
 
 function create_wc_order_from_cxml(WP_REST_Request $request) {
 
@@ -1492,6 +1538,7 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     $order->set_address($shippingAddress, 'shipping');
 
     $order->update_meta_data('_shipping_email',(string) $shipTo->email);
+    $order->update_meta_data('_billing_email',(string) $shipTo->email);
 
     $billTo = $cxml->Request->OrderRequest->OrderRequestHeader->BillTo->Address;
 
@@ -1525,41 +1572,41 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
     $order->save();    
     error_log('Final Order Total: ' . $order->get_total());
 
-    return $order->get_total();
+    return $order->get_id();
 }
 
 
-// Example code to check if meta data is being set correctly
-add_action('woocommerce_admin_order_item_headers', 'add_delivery_details_header');
+// // Example code to check if meta data is being set correctly
+// add_action('woocommerce_admin_order_item_headers', 'add_delivery_details_header');
 
-function add_delivery_details_header() {
-    echo '<th class="line_item_delivery">Delivery Details</th>'; // Adds a header for delivery details
-}
+// function add_delivery_details_header() {
+//     echo '<th class="line_item_delivery">Delivery Details</th>'; // Adds a header for delivery details
+// }
 
 
-function display_delivery_details_admin($product, $item, $item_id) {
-    $deliveryAddress = $item->get_meta('Delivery Address', true);
-    $email = $item->get_meta('Email', true);
-    $phone = $item->get_meta('Phone', true);
+// function display_delivery_details_admin($product, $item, $item_id) {
+//     $deliveryAddress = $item->get_meta('Delivery Address', true);
+//     $email = $item->get_meta('Email', true);
+//     $phone = $item->get_meta('Phone', true);
 
-    if (!empty($deliveryAddress) || !empty($email) || !empty($phone)) {
-        echo '<td class="delivery-details">';
-        if (!empty($deliveryAddress)) {
-            echo '<p><strong>Dirección de entrega:</strong> ' . esc_html($deliveryAddress) . '</p>';
-        }
-        if (!empty($email)) {
-            echo '<p><strong>Correo electrónico:</strong> ' . esc_html($email) . '</p>';
-        }
-        if (!empty($phone)) {
-            echo '<p><strong>Teléfono:</strong> ' . esc_html($phone) . '</p>';
-        }
-        echo '</td>';
-    } else {
-        echo '<td>No details</td>'; // To check if there are no details or the function isn't firing
-    }
-}
+//     if (!empty($deliveryAddress) || !empty($email) || !empty($phone)) {
+//         echo '<td class="delivery-details">';
+//         if (!empty($deliveryAddress)) {
+//             echo '<p><strong>Dirección de entrega:</strong> ' . esc_html($deliveryAddress) . '</p>';
+//         }
+//         if (!empty($email)) {
+//             echo '<p><strong>Correo electrónico:</strong> ' . esc_html($email) . '</p>';
+//         }
+//         if (!empty($phone)) {
+//             echo '<p><strong>Teléfono:</strong> ' . esc_html($phone) . '</p>';
+//         }
+//         echo '</td>';
+//     } else {
+//         echo '<td>No hay detalles</td>'; // To check if there are no details or the function isn't firing
+//     }
+// }
 
-add_action('woocommerce_admin_order_item_values', 'display_delivery_details_admin', 10, 3);
+// add_action('woocommerce_admin_order_item_values', 'display_delivery_details_admin', 10, 3);
 
 
 function custom_hide_order_itemmeta($hidden_meta_keys) {
@@ -1572,11 +1619,8 @@ function custom_hide_order_itemmeta($hidden_meta_keys) {
 }
 add_filter('woocommerce_hidden_order_itemmeta', 'custom_hide_order_itemmeta');
 
-
-
-
-
-// User wise product restriction
+/*
+//// User wise product restriction
 add_action('template_redirect', 'restrict_product_access');
 function restrict_product_access() {
     if (is_product()) {
@@ -1631,6 +1675,7 @@ function exclude_restricted_products($query) {
     }
 }
 
+*/
 
 add_action('admin_enqueue_scripts', 'enqueue_custom_admin_styles');
 function enqueue_custom_admin_styles() {
@@ -1649,6 +1694,8 @@ function add_custom_order_meta_box() {
         'high'                                        // Priority
     );
 }
+
+
 
 function custom_order_information_meta_box_content($post) {
 
@@ -1829,27 +1876,32 @@ function apply_custom_discount_rates($price, $product) {
 
 */
 
-function redirect_customers_from_myaccount() {
-    if (is_account_page()) {
-        if (current_user_can('customer')) {
-            wp_redirect(home_url()); // Redirect to the homepage
-            exit;
-        }
-    }
-}
-add_action('template_redirect', 'redirect_customers_from_myaccount');
 
-function remove_my_account_links_for_customers($items, $menu, $args) {
-    if (current_user_can('customer')) {
-        foreach ($items as $key => $item) {
-            if ($item->url === wc_get_page_permalink('myaccount')) {
-                unset($items[$key]);
-            }
-        }
-    }
-    return $items;
-}
-add_filter('wp_get_nav_menu_items', 'remove_my_account_links_for_customers', 10, 3);
+
+//Removing Contents for UNAV Users
+
+// function redirect_customers_from_myaccount() {
+//     if (is_account_page()) {
+//         if (current_user_can('customer')) {
+//             wp_redirect(home_url()); // Redirect to the homepage
+//             exit;
+//         }
+//     }
+// }
+// add_action('template_redirect', 'redirect_customers_from_myaccount');
+
+// function remove_my_account_links_for_customers($items, $menu, $args) {
+//     if (current_user_can('customer')) {
+//         foreach ($items as $key => $item) {
+//             if ($item->url === wc_get_page_permalink('myaccount')) {
+//                 unset($items[$key]);
+//             }
+//         }
+//     }
+//     return $items;
+// }
+
+// add_filter('wp_get_nav_menu_items', 'remove_my_account_links_for_customers', 10, 3);
 
 
 add_filter('woocommerce_cart_needs_shipping', 'remove_shipping_for_session_specific_users', 10, 1);
