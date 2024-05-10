@@ -2011,4 +2011,11 @@ function restrict_account_access_for_customers() {
             exit;
         }
     }
+
+    // Check if the user is attempting to log out
+    if (isset($_GET['action']) && $_GET['action'] === 'logout') {
+        // Redirect to a different page or show a message instead of logging out
+        wp_redirect(home_url());
+        exit;
+    }
 }
