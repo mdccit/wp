@@ -1956,3 +1956,59 @@ function remove_contacto_menu_item($items, $menu, $args) {
 
     return $items;
 }
+
+// Conditionally hide the inner contents of the Account section with specific CSS.
+add_action('wp_head', 'conditionally_hide_account_inner_css');
+function conditionally_hide_account_inner_css() {
+
+    global  $session_manager;  
+    // Retrieve the cart total for the session ID
+    $session_specific_user = $session_manager->is_session_specific_user();
+ 
+    if($session_specific_user){ 
+        // Check if the user should see the account inner content
+            // Add custom inline styles with higher specificity to hide the inner contents
+            echo "
+            <style>
+            .site-header-account .account-inner,
+            .site-header-account .account-dropdown {
+                display: none !important;
+            }
+            </style>
+            ";
+
+            echo "
+            <style>
+            .account .site-header-account,
+            .account .account-dropdown {
+                visibility: hidden;
+            }
+            </style>
+            ";
+            echo "
+            <style>
+            /* Set visibility hidden for specific WooCommerce header section contents */
+            .elementor-section.elementor-element-b586295 .elementor-widget-container {
+                visibility: hidden;
+            }
+            </style>
+            ";
+    }
+}
+
+// Restrict access to WooCommerce account pages for customers
+add_action('template_redirect', 'restrict_account_access_for_customers');
+function restrict_account_access_for_customers() {
+
+    global  $session_manager;  
+    // Retrieve the cart total for the session ID
+    $session_specific_user = $session_manager->is_session_specific_user();
+ 
+    if($session_specific_user){          
+        if (is_page(['mi-cuenta', 'orders', 'downloads', 'edit-account', 'edit-address'])) {
+            // Redirect to a different page or show an error message
+            wp_redirect(home_url()); // Adjust the URL as needed
+            exit;
+        }
+    }
+}
