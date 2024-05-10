@@ -1691,10 +1691,9 @@ function add_custom_order_meta_box() {
         'custom_order_information_meta_box_content',     // Callback function to output content
         'shop_order',                                    // Post type
         'normal',                                        // Context (where on the screen)
-        'high'                                        // Priority
+        'low'                                        // Priority
     );
 }
-
 
 
 function custom_order_information_meta_box_content($post) {
@@ -1758,6 +1757,15 @@ function custom_order_information_meta_box_content($post) {
 
     echo '</div>'; // Close punchout_order_meta container
 }
+
+
+// Remove the Custom Fields meta box in WooCommerce Orders
+add_action('add_meta_boxes', 'remove_custom_fields_meta_box', 100);
+
+function remove_custom_fields_meta_box() {
+    remove_meta_box('postcustom', 'shop_order', 'normal');
+}
+
 
 
 // Custom Product Prices
