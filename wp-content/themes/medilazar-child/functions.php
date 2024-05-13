@@ -2081,14 +2081,20 @@ function restrict_account_access_for_customers() {
 add_action('pre_get_posts', 'restrict_products_by_user_subcategory');
 
 function restrict_products_by_user_subcategory($query) {
-    if (!is_admin() && $query->is_main_query() && (is_shop() || is_product_category() || is_front_page() || is_home() || is_singular('product'))) {
+    // Only run this on the frontend and not on admin pages
+    if (!is_admin() && $query->is_main_query()) {
         $user_id = get_current_user_id();
+        error_log('Running product restriction for User ID: ' . $user_id);
+
+        // Get restricted categories from ACF field, assuming it returns comma-separated names
         $restricted_categories_names = get_field('User_Restricted_Products', 'user_' . $user_id);
+        error_log('Fetched restricted categories: ' . $restricted_categories_names);
 
         if (!empty($restricted_categories_names)) {
             $category_names = explode(',', $restricted_categories_names);
             $category_ids = array();
 
+            // Convert category names to term IDs
             foreach ($category_names as $category_name) {
                 $term = get_term_by('name', trim($category_name), 'product_cat');
                 if ($term) {
@@ -2111,4 +2117,93 @@ function restrict_products_by_user_subcategory($query) {
             error_log('No restricted categories set for User ID ' . $user_id);
         }
     }
+}
+
+
+add_action('woocommerce_product_query', 'custom_handle_product_query_restriction');
+function custom_handle_product_query_restriction($query) {
+    if (!is_admin()) { // Ensure this runs only on the front end
+        $user_id = get_current_user_id();
+        $restricted_categories_names = get_field('User_Restricted_Products', 'user_' . $user_id);
+        
+        if ($restricted_categories_names) {
+            $category_names = explode(',', $restricted_categories_names);
+            $category_ids = [];
+            
+            foreach ($category_names as $category_name) {
+                $term = get_term_by('name', trim($category_name), 'product_cat');
+                if ($term) {
+                    $category_ids[] = $term->term_id;
+                }
+            }
+            
+            if (!empty($category_ids)) {
+                $tax_query = $query->get('tax_query') ?: [];
+                $tax_query[] = [
+                    'taxonomy' => 'product_cat',
+                    'field'    => 'term_id',
+                    'terms'    => $category_ids,
+                    'operator' => 'NOT IN',
+                ];
+                $query->set('tax_query', $tax_query);
+            }
+        }
+    }
+}
+
+
+add_action('template_redirect', 'block_direct_access_to_restricted_products');
+function block_direct_access_to_restricted_products() {
+    if (is_product()) {
+        global $post;
+        $product = wc_get_product($post);  // Properly get the product object
+
+        if ($product) {
+            $user_id = get_current_user_id();
+            $restricted_categories_names = get_field('User_Restricted_Products', 'user_' . $user_id);
+
+            if ($restricted_categories_names) {
+                $category_names = explode(',', $restricted_categories_names);
+                foreach ($category_names as $category_name) {
+                    $term = get_term_by('name', trim($category_name), 'product_cat');
+                    if ($term && has_term($term->term_id, 'product_cat', $product->get_id())) {
+                        // Redirect to shop page or home page
+                        wp_redirect(home_url());
+                        exit;
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+
+add_filter('carousel_product_args', 'modify_carousel_product_args');
+function modify_carousel_product_args($args) {
+    $user_id = get_current_user_id();
+    $restricted_categories_names = get_field('User_Restricted_Products', 'user_' . $user_id);
+    if (!empty($restricted_categories_names)) {
+        $category_names = explode(',', $restricted_categories_names);
+        $category_ids = [];
+
+        foreach ($category_names as $category_name) {
+            $term = get_term_by('name', trim($category_name), 'product_cat');
+            if ($term) {
+                $category_ids[] = (int) $term->term_id;
+            }
+        }
+
+        if (!empty($category_ids)) {
+            $args['tax_query'] = [
+                [
+                    'taxonomy' => 'product_cat',
+                    'field' => 'term_id',
+                    'terms' => $category_ids,
+                    'operator' => 'NOT IN',
+                ]
+            ];
+        }
+    }
+    return $args;
 }
