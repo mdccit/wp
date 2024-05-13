@@ -1138,13 +1138,15 @@ function get_punchout_return_url() {
 }
 
 function delete_expired_cm_sessions() {
+
+    error_log('running cron');
     global $wpdb;
     $table_name = $wpdb->prefix . 'cm_sessions';
 
     error_log('Cron the wp_cm_sessions table.');
 
     // Current date minus 7 days
-    $date_threshold = date('Y-m-d H:i:s', strtotime('-7 days'));
+    $date_threshold = date('Y-m-d H:i:s', strtotime('-1 days'));
 
     // SQL to delete old sessions not marked as 'order_created'
     $sql = $wpdb->prepare("DELETE FROM $table_name WHERE session_status <> %s AND expires_at < %s", 'order_created', $date_threshold);
@@ -1161,11 +1163,42 @@ function delete_expired_cm_sessions() {
     }
 }
 
-if (!wp_next_scheduled('my_custom_delete_hook')) {
-    wp_schedule_event(time(), 'every_minute', 'my_custom_delete_hook');
-}
 
-add_action('my_custom_delete_hook', 'delete_expired_cm_sessions');
+
+// //// DELETING SESSION CART DATA
+// if (!wp_next_scheduled('cm_session_delete_hook')) {
+//     wp_schedule_event(time(), 'every_minute', 'cm_session_delete_hook');
+// 
+// // Function to delete expired CM sessions
+// function delete_expired_cm_cart_data() {
+//     error_log('Running cron: delete_expired_cm_sessions'); // Log execution start
+
+//     global $wpdb;
+//     $table_name = $wpdb->prefix . 'cm_sessions';
+
+//     // Current date minus 7 days
+//     $date_threshold = date('Y-m-d H:i:s', strtotime('-1 days'));
+
+//     // SQL query to delete sessions not marked as 'order_created' and expired
+//     $sql = $wpdb->prepare("DELETE FROM $table_name WHERE session_status <> %s AND expires_at < %s", 'order_created', $date_threshold);
+
+//     // Execute the query
+//     $result = $wpdb->query($sql);
+
+//     if ($result === false) {
+//         error_log('Failed to delete expired sessions from wp_cm_sessions table.');
+//     } else {
+//         error_log('Deleted ' . $result . ' expired sessions from wp_cm_sessions table.');
+//     }
+// }
+
+// // Schedule the custom event if not already scheduled
+// if (!wp_next_scheduled('cm_session_delete_hook')) {
+//     wp_schedule_event(time(), 'every_minute', 'cm_session_delete_hook');
+// }
+
+// // Hook the function to the custom event
+// add_action('cm_session_delete_hook', 'delete_expired_cm_sessions');
 
 
 function add_custom_cron_interval($schedules) {
@@ -1369,210 +1402,233 @@ add_filter('woocommerce_email_recipient_new_order', 'change_new_order_email_reci
 function create_wc_order_from_cxml(WP_REST_Request $request) {
 
     global $cart_manager, $order_manager;
-    // Load the cXML content
-    $cxml_content = $request->get_body();
+    header('Content-Type: text/xml'); // Set correct content type for cXML response
 
-    if (empty($cxml_content)) {
-        return new WP_Error('cxml_error', 'No cXML content provided', array('status' => 400));
-    }
+    try{
+        // Load the cXML content
+        $cxml_content = $request->get_body();
 
-    $cxml = simplexml_load_string($cxml_content);
-    if (!$cxml) {
-        return new WP_Error('cxml_error', 'Failed to parse cXML content', array('status' => 400));
-    }
-
-    if (!$cxml || !isset($cxml->Request->OrderRequest)) {
-        wp_send_json_error('Invalid cXML structure');
-        return;
-    }
-
-    $orderDate = (string) $cxml->Request->OrderRequest->OrderRequestHeader['orderDate'];
-    $orderID = (string) $cxml->Request->OrderRequest->OrderRequestHeader['orderID'];
-    $orderType = (string) $cxml->Request->OrderRequest->OrderRequestHeader['orderType'];
-    $Type = (string) $cxml->Request->OrderRequest->OrderRequestHeader['type'];
-    $senderIdentity = (string) $cxml->Header->Sender->Credential->Identity;
-    $senderSecret = (string) $cxml->Header->Sender->Credential->SharedSecret;
-    $totalAmount = (string) $cxml->Request->OrderRequest->OrderRequestHeader->Total->Money;
-    // $currency = $cxml->Request->OrderRequest->OrderRequestHeader->Total->Money['currency'];
-    $currency = '€';
-    $contact = $cxml->Request->OrderRequest->OrderRequestHeader->Contact;
-     
-
-    $cart_manager->insert_order_request_to_db($cxml_content, $orderID, $orderType, $Type, $senderIdentity, $orderDate);
-
-    // Get the user object based on the username
-    $user = get_user_by('login', $senderIdentity);
-
-           if (!$user) {
-               // Handle the case where the user does not exist
-               return new WP_Error('user_error', 'User not found', array('status' => 400));
-           }
-   
-
-        // Authenticate the user's password
-        if (!wp_check_password($senderSecret, $user->data->user_pass, $user->ID)) {
-
-            // Prepare the email message
-            $admin_email = get_woocommerce_admin_email(); 
-
-            $to = $admin_email;
-            $subject = 'Autenticación fallida para orden cXML';
-            $message = "Intento fallido de autenticación para usuario: $senderIdentity.\n\n";
-            $message .= "Este es el contenido cXML recibido:\n";
-            $message .= htmlentities($cxml_content);  // Encode to display XML tags in HTML email
-            $headers = array('Content-Type: text/html; charset=UTF-8');
-
-            // Send the email to admin
-            wp_mail($to, $subject, nl2br($message), $headers);
-
-
-            return new WP_Error('authentication_error', 'Credenciales inválidas.', array('status' => 403));
+        if (empty($cxml_content)) {
+            return new WP_Error('cxml_error', 'No cXML content provided', array('status' => 400));
         }
 
-
-        // Create a new order
-        $order = wc_create_order();
-
-        // Process Extrinsic elements from OrderRequestHeader
-        foreach ($cxml->Request->OrderRequest->OrderRequestHeader->Extrinsic as $extrinsic) {
-            $name = (string)$extrinsic['name'];
-            $value = (string)$extrinsic;
-            if($value != ''){
-                $order->update_meta_data('_order_extrinsic_' . $name, $value);
-            }
-          
+        $cxml = simplexml_load_string($cxml_content);
+        if (!$cxml) {
+            return new WP_Error('cxml_error', 'Failed to parse cXML content', array('status' => 400));
         }
 
-               // Extract contact information
- 
-               $name = (string)$contact->Name;
-               $email = (string)$contact->Email;
-               $phone = (string)$contact->Phone->TelephoneNumber->Number;
-               // Address parsing
-               $address = $contact->PostalAddress;
-               $street_lines = [];
-                   foreach ($address->Street as $street) {
-                       if (!empty($street)) {
-                           $street_lines[] = (string)$street;
-                       }
-                   }
-               $street_full = implode(", ", $street_lines);
-               $city = (string)$address->City;
-               $postcode = (string)$address->PostalCode;
-               $country = (string)$address->Country['isoCountryCode'];
+        if (!$cxml || !isset($cxml->Request->OrderRequest)) {
+            wp_send_json_error('Invalid cXML structure');
+            return;
+        }
 
-         // Set the customer for the order
-        $order->set_customer_id($user->ID);
-        $order->update_meta_data('_order_date_cxml', $orderDate);
-        $order->update_meta_data('_order_id_cxml', $orderID);
-        $order->update_meta_data('_order_total_cxml', $totalAmount);
-        $order->update_meta_data('_order_sender_cxml', $senderIdentity);
-        $order->update_meta_data('_order_type_cxml', $orderType);
-        $order->update_meta_data('_order_currency_cxml', $currency);
-        $order->update_meta_data('_created_via_cxml', true); 
- 
-        // Save contact details to order meta
-        $order->update_meta_data('_contact_name_xml', ' Mobre'.$name);
-        $order->update_meta_data('Contact Email', $email);
-        $order->update_meta_data('Contact Phone', $phone);
-        $order->update_meta_data('Contact Street', $street_full);
-        $order->update_meta_data('Contact City', $city);
-        $order->update_meta_data('Contact Postal Code', $postcode);
-        $order->update_meta_data('Contact Country', $country);
-
-        $order_manager->update_order_meta_from_cxml($order, $senderIdentity, $totalAmount, $currency, $orderID);
-
-    $order_total = 0;
-
-    // Parse and add item(s)
-    foreach ($cxml->Request->OrderRequest->ItemOut as $itemOut) {
-        $quantity = (int)$itemOut['quantity'];     
-        $requestedDeliveryDate = (string)$itemOut['requestedDeliveryDate'];
-        $unitPrice = (float)$itemOut->ItemDetail->UnitPrice->Money;
-        $line_total = $quantity * $unitPrice;
+        $orderDate = (string) $cxml->Request->OrderRequest->OrderRequestHeader['orderDate'];
+        $orderID = (string) $cxml->Request->OrderRequest->OrderRequestHeader['orderID'];
+        $orderType = (string) $cxml->Request->OrderRequest->OrderRequestHeader['orderType'];
+        $Type = (string) $cxml->Request->OrderRequest->OrderRequestHeader['type'];
+        $senderIdentity = (string) $cxml->Header->Sender->Credential->Identity;
+        $senderSecret = (string) $cxml->Header->Sender->Credential->SharedSecret;
+        $totalAmount = (string) $cxml->Request->OrderRequest->OrderRequestHeader->Total->Money;
+        // $currency = $cxml->Request->OrderRequest->OrderRequestHeader->Total->Money['currency'];
+        $currency = '€';
+        $contact = $cxml->Request->OrderRequest->OrderRequestHeader->Contact;
         
-        $order_total += $line_total;
 
-        $product_id = wc_get_product_id_by_sku((string)$itemOut->ItemID->SupplierPartID);
-        $product = wc_get_product($product_id);
-        if ($product) {
-           $item_id =  $order->add_product($product, $quantity, array('subtotal' => $unitPrice, 'total' => $line_total));
+        $cart_manager->insert_order_request_to_db($cxml_content, $orderID, $orderType, $Type, $senderIdentity, $orderDate);
 
-             // Get the order item object
-            $item = $order->get_item($item_id);
+        // Get the user object based on the username
+        $user = get_user_by('login', $senderIdentity);
+
+            if (!$user) {
+                // Handle the case where the user does not exist
+                return new WP_Error('user_error', 'User not found', array('status' => 400));
+            }
+    
+
+            // Authenticate the user's password
+            if (!wp_check_password($senderSecret, $user->data->user_pass, $user->ID)) {
+
+                // Prepare the email message
+                $admin_email = get_woocommerce_admin_email(); 
+
+                $to = $admin_email;
+                $subject = 'Autenticación fallida para orden cXML';
+                $message = "Intento fallido de autenticación para usuario: $senderIdentity.\n\n";
+                $message .= "Este es el contenido cXML recibido:\n";
+                $message .= htmlentities($cxml_content);  // Encode to display XML tags in HTML email
+                $headers = array('Content-Type: text/html; charset=UTF-8');
+
+                // Send the email to admin
+                wp_mail($to, $subject, nl2br($message), $headers);
+
+
+                return new WP_Error('authentication_error', 'Credenciales inválidas.', array('status' => 403));
+            }
+
+
+            // Create a new order
+            $order = wc_create_order();
+
+            // Process Extrinsic elements from OrderRequestHeader
+            foreach ($cxml->Request->OrderRequest->OrderRequestHeader->Extrinsic as $extrinsic) {
+                $name = (string)$extrinsic['name'];
+                $value = (string)$extrinsic;
+                if($value != ''){
+                    $order->update_meta_data('_order_extrinsic_' . $name, $value);
+                }
             
-            if ($item && !empty($requestedDeliveryDate)) {
-                // Adding custom meta data to the order item
-                $item->add_meta_data('Fecha de Entrega Solicitada', $requestedDeliveryDate, true);
-                $item->save_meta_data(); // Save the meta data changes
             }
 
-            if ($item) {
-                // Save delivery address details
-                $shipTo = $itemOut->ShipTo->Address;
-                $deliveryAddress = format_address_from_cxml($shipTo->PostalAddress);
-                $email = (string)$shipTo->Email;
-                $phone = (string)$shipTo->Phone->TelephoneNumber->Number;
+                // Extract contact information
+    
+                $name = (string)$contact->Name;
+                $email = (string)$contact->Email;
+                $phone = (string)$contact->Phone->TelephoneNumber->Number;
+                // Address parsing
+                $address = $contact->PostalAddress;
+                $street_lines = [];
+                    foreach ($address->Street as $street) {
+                        if (!empty($street)) {
+                            $street_lines[] = (string)$street;
+                        }
+                    }
+                $street_full = implode(", ", $street_lines);
+                $city = (string)$address->City;
+                $postcode = (string)$address->PostalCode;
+                $country = (string)$address->Country['isoCountryCode'];
 
-                $item->add_meta_data('Dirección de entrega', $deliveryAddress, true);
-                $item->add_meta_data('Correo electrónico', $email, true);
-                $item->add_meta_data('Teléfono', $phone, true);
+            // Set the customer for the order
+            $order->set_customer_id($user->ID);
+            $order->update_meta_data('_order_date_cxml', $orderDate);
+            $order->update_meta_data('_order_id_cxml', $orderID);
+            $order->update_meta_data('_order_total_cxml', $totalAmount);
+            $order->update_meta_data('_order_sender_cxml', $senderIdentity);
+            $order->update_meta_data('_order_type_cxml', $orderType);
+            $order->update_meta_data('_order_currency_cxml', $currency);
+            $order->update_meta_data('_created_via_cxml', true); 
+    
+            // Save contact details to order meta
+            $order->update_meta_data('_contact_name_xml', ' Mobre'.$name);
+            $order->update_meta_data('Contact Email', $email);
+            $order->update_meta_data('Contact Phone', $phone);
+            $order->update_meta_data('Contact Street', $street_full);
+            $order->update_meta_data('Contact City', $city);
+            $order->update_meta_data('Contact Postal Code', $postcode);
+            $order->update_meta_data('Contact Country', $country);
 
-                $item->save();
+            $order_manager->update_order_meta_from_cxml($order, $senderIdentity, $totalAmount, $currency, $orderID);
+
+        $order_total = 0;
+
+        // Parse and add item(s)
+        foreach ($cxml->Request->OrderRequest->ItemOut as $itemOut) {
+            $quantity = (int)$itemOut['quantity'];     
+            $requestedDeliveryDate = (string)$itemOut['requestedDeliveryDate'];
+            $unitPrice = (float)$itemOut->ItemDetail->UnitPrice->Money;
+            $line_total = $quantity * $unitPrice;
+            
+            $order_total += $line_total;
+
+            $product_id = wc_get_product_id_by_sku((string)$itemOut->ItemID->SupplierPartID);
+            $product = wc_get_product($product_id);
+            if ($product) {
+            $item_id =  $order->add_product($product, $quantity, array('subtotal' => $unitPrice, 'total' => $line_total));
+
+                // Get the order item object
+                $item = $order->get_item($item_id);
+                
+                if ($item && !empty($requestedDeliveryDate)) {
+                    // Adding custom meta data to the order item
+                    $item->add_meta_data('Fecha de Entrega Solicitada', $requestedDeliveryDate, true);
+                    $item->save_meta_data(); // Save the meta data changes
+                }
+
+                if ($item) {
+                    // Save delivery address details
+                    $shipTo = $itemOut->ShipTo->Address;
+                    $deliveryAddress = format_address_from_cxml($shipTo->PostalAddress);
+                    $email = (string)$shipTo->Email;
+                    $phone = (string)$shipTo->Phone->TelephoneNumber->Number;
+
+                    $item->add_meta_data('Dirección de entrega', $deliveryAddress, true);
+                    $item->add_meta_data('Correo electrónico', $email, true);
+                    $item->add_meta_data('Teléfono', $phone, true);
+
+                    $item->save();
+                }
+
             }
 
+                // Process Extrinsic elements for each ItemOut
+                // foreach ($itemOut->ItemDetail->Extrinsic as $extrinsic) {
+                //     $name = (string)$extrinsic['name'];
+                //     $value = (string)$extrinsic;  
+                //     $order->update_meta_data('_item_extrinsic_' . $name, $value);
+                // }         
         }
 
-             // Process Extrinsic elements for each ItemOut
-            // foreach ($itemOut->ItemDetail->Extrinsic as $extrinsic) {
-            //     $name = (string)$extrinsic['name'];
-            //     $value = (string)$extrinsic;  
-            //     $order->update_meta_data('_item_extrinsic_' . $name, $value);
-            // }         
-    }
-
-   // Set shipping address
-    $shipTo = $cxml->Request->OrderRequest->OrderRequestHeader->ShipTo->Address;
-    $shippingAddress = $cart_manager->set_order_address_from_cxml($shipTo);
- 
-    $order->set_address($shippingAddress, 'shipping');
-
-    $order->update_meta_data('_shipping_email',(string) $shipTo->email);
-    $order->update_meta_data('_billing_email',(string) $shipTo->email);
-
-    $billTo = $cxml->Request->OrderRequest->OrderRequestHeader->BillTo->Address;
-
-    $billingAddress = $cart_manager->set_order_address_from_cxml($billTo);
-
-     // Set billing address
-    $order->set_address($billingAddress, 'billing');
-    // Assuming shipping is free and no additional calculations are needed    
-
-    $order->set_payment_method('cm_manual');  
-
-    // $order->calculate_totals();
-    $order->set_total($totalAmount);
+    // Set shipping address
+        $shipTo = $cxml->Request->OrderRequest->OrderRequestHeader->ShipTo->Address;
+        $shippingAddress = $cart_manager->set_order_address_from_cxml($shipTo);
     
-    $order->save(); 
+        $order->set_address($shippingAddress, 'shipping');
 
-    error_log('Order Total After Calculation: ' . $order->get_total());
+        $order->update_meta_data('_shipping_email',(string) $shipTo->email);
+        $order->update_meta_data('_billing_email',(string) $shipTo->email);
 
-    // $order->set_total($totalAmount); 
-    $manual_payment_gateway = new CM_WC_Gateway_Manual();
-   
-    // Process payment and update order status
-    $result = $manual_payment_gateway->process_payment($order->get_id());
+        $billTo = $cxml->Request->OrderRequest->OrderRequestHeader->BillTo->Address;
 
-    if ($result['result'] == 'success') {
-        error_log('Manual payment completed.');
-    } else {
-        error_log('Manual payment failed.');
+        $billingAddress = $cart_manager->set_order_address_from_cxml($billTo);
+
+        // Set billing address
+        $order->set_address($billingAddress, 'billing');
+        // Assuming shipping is free and no additional calculations are needed    
+
+        $order->set_payment_method('cm_manual');  
+
+        // $order->calculate_totals();
+        $order->set_total($totalAmount);
+        
+        $order->save(); 
+
+        error_log('Order Total After Calculation: ' . $order->get_total());
+
+        // $order->set_total($totalAmount); 
+        $manual_payment_gateway = new CM_WC_Gateway_Manual();
+    
+        // Process payment and update order status
+        $result = $manual_payment_gateway->process_payment($order->get_id());
+
+        if ($result['result'] == 'success') {
+            error_log('Manual payment completed.');
+        } else {
+            error_log('Manual payment failed.');
+        }
+    
+        $order->save();    
+        error_log('Final Order Total: ' . $order->get_total());
+
+        // Prepare cXML success response
+        $response = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
+        $response .= "<cXML payloadID=\"response" . time() . "\" timestamp=\"" . date('c') . "\">";
+        $response .= "<Response>";
+        $response .= "<Status code=\"200\" text=\"success\">Pedido creado con éxito</Status>";
+        $response .= "<OrderID>" . $order->get_id() . "</OrderID>";
+        $response .= "</Response>";
+        $response .= "</cXML>";
+
+        echo $response;
+    }  catch (Exception $e) {
+        // Prepare cXML error response
+        $response = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
+        $response .= "<cXML payloadID=\"response" . time() . "\" timestamp=\"" . date('c') . "\">";
+        $response .= "<Response>";
+        $response .= "<Status code=\"400\" text=\"failure\">Error al crear el pedido: " . $e->getMessage() . "</Status>";
+        $response .= "</Response>";
+        $response .= "</cXML>";
+
+        echo $response;
     }
-  
-    $order->save();    
-    error_log('Final Order Total: ' . $order->get_total());
-
-    return $order->get_id();
 }
 
 
@@ -2017,5 +2073,42 @@ function restrict_account_access_for_customers() {
         // Redirect to a different page or show a message instead of logging out
         wp_redirect(home_url());
         exit;
+    }
+}
+
+####   RESTRICT PRODUCT BY SUB CATEGORIES
+
+add_action('pre_get_posts', 'restrict_products_by_user_subcategory');
+
+function restrict_products_by_user_subcategory($query) {
+    if (!is_admin() && $query->is_main_query() && (is_shop() || is_product_category() || is_front_page() || is_home() || is_singular('product'))) {
+        $user_id = get_current_user_id();
+        $restricted_categories_names = get_field('User_Restricted_Products', 'user_' . $user_id);
+
+        if (!empty($restricted_categories_names)) {
+            $category_names = explode(',', $restricted_categories_names);
+            $category_ids = array();
+
+            foreach ($category_names as $category_name) {
+                $term = get_term_by('name', trim($category_name), 'product_cat');
+                if ($term) {
+                    $category_ids[] = (int) $term->term_id;
+                }
+            }
+
+            if (!empty($category_ids)) {
+                $tax_query = $query->get('tax_query') ?: array();
+                $tax_query[] = array(
+                    'taxonomy' => 'product_cat',
+                    'field'    => 'term_id',
+                    'terms'    => $category_ids,
+                    'operator' => 'NOT IN',
+                );
+                $query->set('tax_query', $tax_query);
+                error_log('Tax Query Modified: ' . print_r($tax_query, true));
+            }
+        } else {
+            error_log('No restricted categories set for User ID ' . $user_id);
+        }
     }
 }
