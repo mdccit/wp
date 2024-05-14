@@ -1387,17 +1387,52 @@ function cm_add_wc_gateway_manual($methods) {
 add_filter('woocommerce_payment_gateways', 'cm_add_wc_gateway_manual');
 
 
+
+add_filter('woocommerce_email_recipient_customer_processing_order', 'disable_cxml_customer_emails', 10, 2);
+add_filter('woocommerce_email_recipient_customer_completed_order', 'disable_cxml_customer_emails', 10, 2);
+add_filter('woocommerce_email_recipient_customer_on_hold_order', 'disable_cxml_customer_emails', 10, 2);
+
+function disable_cxml_customer_emails($recipient, $order) {
+    if (!$order) return $recipient; // Check if the order object exists
+    if (is_a($order, 'WC_Order') && $order->get_meta('_created_via_cxml')) {
+        return ''; // Return an empty string to stop the email for orders created via cXML
+    }
+    return $recipient;
+}
+
+
 // Custom function to identify orders created via cXML
 // //Change the receipient of the emails
 function change_new_order_email_recipient($recipient, $order) {
     // Ensure that you only modify the recipient for orders created via your cXML function
     if (is_a($order, 'WC_Order') && $order->get_meta('_created_via_cxml')) {
-        $new_recipient = get_option('admin_email');  
+        $new_recipient = get_woocommerce_email_recipient();
         return $new_recipient;
     }
     return $recipient;
 }
 add_filter('woocommerce_email_recipient_new_order', 'change_new_order_email_recipient', 10, 2);
+
+
+function get_woocommerce_email_recipient() {
+    // Get all WooCommerce emails
+    $mailer = WC()->mailer();
+    $emails = $mailer->get_emails();
+
+    // Loop through the emails to find 'New Order' email
+    foreach ($emails as $email) {
+        if ('WC_Email_New_Order' === get_class($email)) {
+            // Output the recipient email for 'New Order'
+            $recipient = $email->get_recipient();
+            error_log('New Order email is sent to: ' . $recipient);
+            return $recipient;
+        }
+    }
+    return 'No recipient found';
+}
+
+add_action('init', 'get_woocommerce_email_recipient');
+
 
 function create_wc_order_from_cxml(WP_REST_Request $request) {
 
@@ -1674,6 +1709,13 @@ add_action('woocommerce_admin_order_items_after_line_items', function($order_id)
 // }
 
 
+add_action( 'woocommerce_email_customer_details', 'remove_email_billing_address', 1 );
+
+function remove_email_billing_address() {
+    remove_action( 'woocommerce_email_customer_details', array( WC()->countries, 'email_address' ), 20 );
+}
+
+
 add_action('woocommerce_email_after_order_table', 'add_billing_and_shipping_address_to_emails', 20, 4);
 
 function add_billing_and_shipping_address_to_emails($order, $sent_to_admin, $plain_text, $email) {
@@ -1681,7 +1723,7 @@ function add_billing_and_shipping_address_to_emails($order, $sent_to_admin, $pla
         echo '<h2>' . __('Dirección de envío', 'woocommerce') . '</h2>';
         echo '<p>' . $order->get_formatted_shipping_address() . '</p>';
 
-        echo '<h2>' . __('Billing Address', 'woocommerce') . '</h2>';
+        echo '<h2>' . __('Dirección de facturación', 'woocommerce') . '</h2>';
         echo '<p>' . $order->get_formatted_billing_address() . '</p>';
     }
 }
