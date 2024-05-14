@@ -48,7 +48,7 @@ class CM_WC_Gateway_Manual extends WC_Payment_Gateway {
                 'title'       => 'Title',
                 'type'        => 'text',
                 'description' => 'This controls the title which the user sees during checkout.',
-                'default'     => 'CM Manual Payment',
+                'default'     => 'Direct Payment',
                 'desc_tip'    => true,
             ),
             'description' => array(

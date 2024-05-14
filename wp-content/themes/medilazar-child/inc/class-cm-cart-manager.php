@@ -601,19 +601,27 @@ class Cart_Manager {
         }
         
         // Combine street address lines
-        $address_1 = isset($streets[0]) ? $streets[0] : '';
-        $address_2 = isset($streets[1]) ? $streets[1] : '';
+        $address_1 = isset($streets[0]) ? $streets[0].',' : '';
+        $address_2 = isset($streets[1]) ? $streets[1].',' : '';
+        $address_3 = isset($streets[1]) ? $streets[2] : '';
     
         if (count($streets) > 2) {
             $address_2 .= ' ' . implode(', ', array_slice($streets, 2));
         }
 
+        $deliver_to = isset($addressElement->PostalAddress->DeliverTo) ? (string)$addressElement->PostalAddress->DeliverTo : '';
+        $name = (string)$addressElement->Name;
+        $full_name = $deliver_to ? ($deliver_to . ' - ' . $name) : $name;
+
+    // Combine DeliverTo and Name
+    $full_name = $deliver_to ? ($deliver_to . ' - ' . $name) : $name;
         $phoneNumber = (string)$addressElement->Phone->TelephoneNumber->Number;       
     
         $Address = [
-            'first_name' => (string)$addressElement->Name,
+            'first_name' => $full_name,
             'address_1' => $address_1,
             'address_2' => $address_2,
+            'address_3' => $address_3,
             'city' => (string)$addressElement->PostalAddress->City,
             'state' => (string)$addressElement->PostalAddress->State,
             'postcode' => (string)$addressElement->PostalAddress->PostalCode,

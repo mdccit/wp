@@ -1494,6 +1494,7 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
                     }
                 $street_full = implode(", ", $street_lines);
                 $city = (string)$address->City;
+                $state = (string)$address->State;
                 $postcode = (string)$address->PostalCode;
                 $country = (string)$address->Country['isoCountryCode'];
 
@@ -1513,6 +1514,7 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
             $order->update_meta_data('Contact Phone', $phone);
             $order->update_meta_data('Contact Street', $street_full);
             $order->update_meta_data('Contact City', $city);
+            $order->update_meta_data('Contact State', $state);
             $order->update_meta_data('Contact Postal Code', $postcode);
             $order->update_meta_data('Contact Country', $country);
 
@@ -1743,7 +1745,7 @@ add_action('add_meta_boxes', 'add_custom_order_meta_box');
 function add_custom_order_meta_box() {
     add_meta_box(
         'custom_order_information',                       // ID of the meta box
-        __('Información de Pedido Punchout (cXML)', 'medilazar'), // Title of the meta box
+        __('Información de Pedido Punchout', 'medilazar'), // Title of the meta box
         'custom_order_information_meta_box_content',     // Callback function to output content
         'shop_order',                                    // Post type
         'normal',                                        // Context (where on the screen)
@@ -1769,6 +1771,7 @@ function custom_order_information_meta_box_content($post) {
         $contact_phone = $order->get_meta('Contact Phone');
         $contact_street = $order->get_meta('Contact Street');
         $contact_city = $order->get_meta('Contact City');
+        $contact_state = $order->get_meta('Contact State');
         $contact_postal_code = $order->get_meta('Contact Postal Code');
         $contact_country = $order->get_meta('Contact Country');
 
@@ -1782,8 +1785,8 @@ function custom_order_information_meta_box_content($post) {
     // Column 1: Order ID and Sender
     echo '<div class="order_meta_column">';
     echo '<p><strong>' . __('ID de Pedido :', 'medilazar') . '</strong> ' . esc_html($order_id_cxml) . '</p>';
-    echo '<p><strong>' . __('Fecha del Pedido :', 'medilazar') . '</strong> ' . esc_html($order_date_cxml) . '</p>';
-    echo '<p><strong>' . __('Total del pedido :', 'medilazar') . '</strong> ' . esc_html($currency) .'' . esc_html($total) . '</p>';
+    echo '<p><strong>' . __('Fecha/hora del pedido :', 'medilazar') . '</strong> ' . esc_html($order_date_cxml) . '</p>';
+    // echo '<p><strong>' . __('Total del pedido :', 'medilazar') . '</strong> ' . esc_html($currency) .'' . esc_html($total) . '</p>';
     echo '</div>'; // Close column one
 
     // Column 2: Order Date
@@ -1793,6 +1796,7 @@ function custom_order_information_meta_box_content($post) {
     echo '<p><strong>'. __('Teléfono:', 'medilazar') .'</strong> ' . esc_html($contact_phone) . '</p>';
     echo '<p><strong>'. __('Calle:', 'medilazar') .'</strong> ' . esc_html($contact_street) . '</p>';
     echo '<p><strong>'. __('Ciudad:', 'medilazar') .'</strong> ' . esc_html($contact_city) . '</p>';
+    echo '<p><strong>'. __('Estado:', 'medilazar') .'</strong> ' . esc_html($contact_state) . '</p>';
     echo '<p><strong>'. __('Código Postal:', 'medilazar') .'</strong> ' . esc_html($contact_postal_code) . '</p>';
     echo '<p><strong>'. __('País:', 'medilazar') .'</strong> ' . esc_html($contact_country) . '</p>';
     echo '</div>'; // Close column two
@@ -2182,10 +2186,12 @@ function block_direct_access_to_restricted_products() {
 
 
 add_filter('carousel_product_args', 'modify_carousel_product_args');
+
 function modify_carousel_product_args($args) {
     $user_id = get_current_user_id();
     $restricted_categories_names = get_field('User_Restricted_Products', 'user_' . $user_id);
-    if (!empty($restricted_categories_names)) {
+
+    if ($restricted_categories_names) {
         $category_names = explode(',', $restricted_categories_names);
         $category_ids = [];
 
@@ -2197,15 +2203,17 @@ function modify_carousel_product_args($args) {
         }
 
         if (!empty($category_ids)) {
-            $args['tax_query'] = [
-                [
-                    'taxonomy' => 'product_cat',
-                    'field' => 'term_id',
-                    'terms' => $category_ids,
-                    'operator' => 'NOT IN',
-                ]
+            $tax_query = (isset($args['tax_query']) && is_array($args['tax_query'])) ? $args['tax_query'] : [];
+            $tax_query[] = [
+                'taxonomy' => 'product_cat',
+                'field'    => 'term_id',
+                'terms'    => $category_ids,
+                'operator' => 'NOT IN',
             ];
+            $args['tax_query'] = $tax_query;
         }
     }
+
     return $args;
 }
+
