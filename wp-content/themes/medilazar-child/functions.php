@@ -1559,14 +1559,24 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
                     $item->save();
                 }
 
-            }
+                foreach ($itemOut->ItemDetail->Extrinsic as $extrinsic) {
+                    $name = (string)$extrinsic['name'];
+                    $value = (string)$extrinsic;
+                    
+                    // Check if the name is one of the excluded fields
+                    if (in_array($name, ['LINENUM', 'SHIPMENTNUM'])) {
+                        continue; // Skip adding these meta data
+                    }
+                
+                    // Add as item meta if not empty
+                    if (!empty($value)) {
+                        $item->add_meta_data($name, $value, true);
+                        $item->save(); // Ensure this is save()
+                    }
+                }
+                
 
-                // Process Extrinsic elements for each ItemOut
-                // foreach ($itemOut->ItemDetail->Extrinsic as $extrinsic) {
-                //     $name = (string)$extrinsic['name'];
-                //     $value = (string)$extrinsic;  
-                //     $order->update_meta_data('_item_extrinsic_' . $name, $value);
-                // }         
+            }     
         }
 
     // Set shipping address
@@ -1587,6 +1597,7 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
         // Assuming shipping is free and no additional calculations are needed    
 
         $order->set_payment_method('cm_manual');  
+        $order->set_payment_method_title('Pago Directo');
 
         // $order->calculate_totals();
         $order->set_total($totalAmount);
@@ -1630,6 +1641,48 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
         $response .= "</cXML>";
 
         echo $response;
+    }
+}
+
+add_filter('woocommerce_order_item_display_meta_key', function($display_key, $meta) {
+    // Check if the meta key starts with 'Extrinsic_' and modify the display key
+    if (strpos($meta->key, 'Extrinsic_') === 0) {
+        $display_key = str_replace('Extrinsic_', '', $meta->key);
+    }
+    return $display_key;
+}, 10, 2);
+
+add_action('woocommerce_admin_order_items_after_line_items', function($order_id) {
+    $order = wc_get_order($order_id);
+    foreach ($order->get_items() as $item_id => $item) {
+        foreach ($item->get_meta_data() as $meta) {
+            if (strpos($meta->key, 'Extrinsic_') === 0) {
+                echo '<tr><td colspan="5">' . $meta->key . ': ' . $meta->value . '</td></tr>';
+            }
+        }
+    }
+}, 10, 1);
+
+
+// add_action('woocommerce_email_after_order_table', 'add_shipping_address_to_emails', 20, 4);
+
+// function add_shipping_address_to_emails($order, $sent_to_admin, $plain_text, $email) {
+//     if ('customer_completed_order' === $email->id || 'customer_processing_order' === $email->id || 'customer_on_hold_order' === $email->id) {
+//         echo '<h2>' . __('Shipping Address', 'woocommerce') . '</h2>';
+//         echo '<p>' . $order->get_formatted_shipping_address() . '</p>';
+//     }
+// }
+
+
+add_action('woocommerce_email_after_order_table', 'add_billing_and_shipping_address_to_emails', 20, 4);
+
+function add_billing_and_shipping_address_to_emails($order, $sent_to_admin, $plain_text, $email) {
+    if ('customer_completed_order' === $email->id || 'customer_processing_order' === $email->id || 'customer_on_hold_order' === $email->id) {
+        echo '<h2>' . __('Dirección de envío', 'woocommerce') . '</h2>';
+        echo '<p>' . $order->get_formatted_shipping_address() . '</p>';
+
+        echo '<h2>' . __('Billing Address', 'woocommerce') . '</h2>';
+        echo '<p>' . $order->get_formatted_billing_address() . '</p>';
     }
 }
 
@@ -1791,14 +1844,14 @@ function custom_order_information_meta_box_content($post) {
 
     // Column 2: Order Date
     echo '<div class="order_meta_column">';
-    echo '<p><strong>'. __('Nombre de contacto:', 'medilazar') .'</strong> ' . esc_html($contact_name) . '</p>';
-    echo '<p><strong>'. __('Correo electrónico:', 'medilazar') .'</strong> ' . esc_html($contact_email) . '</p>';
-    echo '<p><strong>'. __('Teléfono:', 'medilazar') .'</strong> ' . esc_html($contact_phone) . '</p>';
-    echo '<p><strong>'. __('Calle:', 'medilazar') .'</strong> ' . esc_html($contact_street) . '</p>';
-    echo '<p><strong>'. __('Ciudad:', 'medilazar') .'</strong> ' . esc_html($contact_city) . '</p>';
-    echo '<p><strong>'. __('Estado:', 'medilazar') .'</strong> ' . esc_html($contact_state) . '</p>';
-    echo '<p><strong>'. __('Código Postal:', 'medilazar') .'</strong> ' . esc_html($contact_postal_code) . '</p>';
-    echo '<p><strong>'. __('País:', 'medilazar') .'</strong> ' . esc_html($contact_country) . '</p>';
+    echo '<p>' . esc_html($contact_name) . '</p>';
+    echo '<p>' . esc_html($contact_email) . '</p>';
+    echo '<p>' . esc_html($contact_phone) . '</p>';
+    echo '<p>' . esc_html($contact_street) . '</p>';
+    echo '<p>' . esc_html($contact_city) . '</p>';
+    echo '<p>' . esc_html($contact_state) . '</p>';
+    echo '<p>' . esc_html($contact_postal_code) . '</p>';
+    echo '<p><' . esc_html($contact_country) . '</p>';
     echo '</div>'; // Close column two
 
     // Column 3: Extrinsic
