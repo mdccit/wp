@@ -2082,39 +2082,41 @@ add_action('pre_get_posts', 'restrict_products_by_user_subcategory');
 
 function restrict_products_by_user_subcategory($query) {
     // Only run this on the frontend and not on admin pages
-    if (!is_admin() && $query->is_main_query()) {
-        $user_id = get_current_user_id();
-        error_log('Running product restriction for User ID: ' . $user_id);
+    if (!is_admin() && (is_shop() || is_product_category() || is_front_page())) {
+        if ($query->is_main_query()) {
+            $user_id = get_current_user_id();
+            error_log('Running product restriction for User ID: ' . $user_id);
 
-        // Get restricted categories from ACF field, assuming it returns comma-separated names
-        $restricted_categories_names = get_field('User_Restricted_Products', 'user_' . $user_id);
-        error_log('Fetched restricted categories: ' . $restricted_categories_names);
+            // Get restricted categories from ACF field, assuming it returns comma-separated names
+            $restricted_categories_names = get_field('User_Restricted_Products', 'user_' . $user_id);
+            error_log('Fetched restricted categories: ' . $restricted_categories_names);
 
-        if (!empty($restricted_categories_names)) {
-            $category_names = explode(',', $restricted_categories_names);
-            $category_ids = array();
+            if (!empty($restricted_categories_names)) {
+                $category_names = explode(',', $restricted_categories_names);
+                $category_ids = array();
 
-            // Convert category names to term IDs
-            foreach ($category_names as $category_name) {
-                $term = get_term_by('name', trim($category_name), 'product_cat');
-                if ($term) {
-                    $category_ids[] = (int) $term->term_id;
+                // Convert category names to term IDs
+                foreach ($category_names as $category_name) {
+                    $term = get_term_by('name', trim($category_name), 'product_cat');
+                    if ($term) {
+                        $category_ids[] = (int) $term->term_id;
+                    }
                 }
-            }
 
-            if (!empty($category_ids)) {
-                $tax_query = $query->get('tax_query') ?: array();
-                $tax_query[] = array(
-                    'taxonomy' => 'product_cat',
-                    'field'    => 'term_id',
-                    'terms'    => $category_ids,
-                    'operator' => 'NOT IN',
-                );
-                $query->set('tax_query', $tax_query);
-                error_log('Tax Query Modified: ' . print_r($tax_query, true));
-            }
+                if (!empty($category_ids)) {
+                    $tax_query = $query->get('tax_query') ?: array();
+                    $tax_query[] = array(
+                        'taxonomy' => 'product_cat',
+                        'field'    => 'term_id',
+                        'terms'    => $category_ids,
+                        'operator' => 'NOT IN',
+                    );
+                    $query->set('tax_query', $tax_query);
+                    error_log('Tax Query Modified: ' . print_r($tax_query, true));
+                }
         } else {
             error_log('No restricted categories set for User ID ' . $user_id);
+        }
         }
     }
 }
