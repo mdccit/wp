@@ -1392,27 +1392,27 @@ add_filter('woocommerce_payment_gateways', 'cm_add_wc_gateway_manual');
 // add_filter('woocommerce_email_recipient_customer_completed_order', 'disable_cxml_customer_emails', 10, 2);
 // add_filter('woocommerce_email_recipient_customer_on_hold_order', 'disable_cxml_customer_emails', 10, 2);
 
-function disable_cxml_customer_emails($recipient, $order) {
-    if (!$order) return $recipient; // Check if the order object exists
-    if (is_a($order, 'WC_Order') && $order->get_meta('_created_via_cxml')) {
-        return ''; // Return an empty string to stop the email for orders created via cXML
-    }
-    return $recipient;
-}
+// function disable_cxml_customer_emails($recipient, $order) {
+//     if (!$order) return $recipient; // Check if the order object exists
+//     if (is_a($order, 'WC_Order') && $order->get_meta('_created_via_cxml')) {
+//         return ''; // Return an empty string to stop the email for orders created via cXML
+//     }
+//     return $recipient;
+// }
 
 
 // Custom function to identify orders created via cXML
 // //Change the receipient of the emails
-function change_new_order_email_recipient($recipient, $order) {
+// function change_new_order_email_recipient($recipient, $order) {
   
-    if (is_a($order, 'WC_Order') && $order->get_meta('_created_via_cxml')) {
-        $new_recipient = get_woocommerce_email_recipient();
-        error_log('New recipient: ' . $new_recipient);  // Log new recipient
-        return $new_recipient;
-    }
-    return $recipient;
-}
-add_filter('woocommerce_email_recipient_new_order', 'change_new_order_email_recipient', 10, 2);
+//     if (is_a($order, 'WC_Order') && $order->get_meta('_created_via_cxml')) {
+//         $new_recipient = get_woocommerce_email_recipient();
+//         error_log('New recipient: ' . $new_recipient);  // Log new recipient
+//         return $new_recipient;
+//     }
+//     return $recipient;
+// }
+// add_filter('woocommerce_email_recipient_new_order', 'change_new_order_email_recipient', 10, 2);
 
 
 
@@ -1623,7 +1623,9 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
         $order->set_address($shippingAddress, 'shipping');
 
         $order->update_meta_data('_shipping_email',(string) $shipTo->email);
-        $order->update_meta_data('_billing_email',(string) $shipTo->email);
+        // $order->update_meta_data('_billing_email',(string) $shipTo->email);
+        $order->set_billing_email((string) $shipTo->Email); // Correct method
+
         // $order->set_billing_email($email);
         // $order->save();
 
@@ -2291,21 +2293,21 @@ function modify_carousel_product_args($args) {
 
 
 
-// add_action( 'woocommerce_email_customer_details', 'remove_email_billing_address', 1 );
+add_action( 'woocommerce_email_customer_details', 'remove_email_billing_address', 1 );
 
-// function remove_email_billing_address() {
-//     remove_action( 'woocommerce_email_customer_details', array( WC()->countries, 'email_address' ), 20 );
-// }
+function remove_email_billing_address() {
+    remove_action( 'woocommerce_email_customer_details', array( WC()->countries, 'email_address' ), 20 );
+}
 
 
-// add_action('woocommerce_email_after_order_table', 'add_billing_and_shipping_address_to_emails', 20, 4);
+add_action('woocommerce_email_after_order_table', 'add_billing_and_shipping_address_to_emails', 20, 4);
 
-// function add_billing_and_shipping_address_to_emails($order, $sent_to_admin, $plain_text, $email) {
-//     if ('customer_completed_order' === $email->id || 'customer_processing_order' === $email->id || 'customer_on_hold_order' === $email->id) {
-//         echo '<h2>' . __('Dirección de envío', 'woocommerce') . '</h2>';
-//         echo '<p>' . $order->get_formatted_shipping_address() . '</p>';
+function add_billing_and_shipping_address_to_emails($order, $sent_to_admin, $plain_text, $email) {
+    if ('customer_completed_order' === $email->id || 'customer_processing_order' === $email->id || 'customer_on_hold_order' === $email->id) {
+        echo '<h2>' . __('Dirección de envío', 'woocommerce') . '</h2>';
+        echo '<p>' . $order->get_formatted_shipping_address() . '</p>';
 
-//         echo '<h2>' . __('Dirección de facturación', 'woocommerce') . '</h2>';
-//         echo '<p>' . $order->get_formatted_billing_address() . '</p>';
-//     }
-// }
+        echo '<h2>' . __('Dirección de facturación', 'woocommerce') . '</h2>';
+        echo '<p>' . $order->get_formatted_billing_address() . '</p>';
+    }
+}
