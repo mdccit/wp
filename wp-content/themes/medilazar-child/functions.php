@@ -2303,7 +2303,8 @@ function remove_email_billing_address() {
 add_action('woocommerce_email_after_order_table', 'add_billing_and_shipping_address_to_emails', 20, 4);
 
 function add_billing_and_shipping_address_to_emails($order, $sent_to_admin, $plain_text, $email) {
-    if ('customer_completed_order' === $email->id || 'customer_processing_order' === $email->id || 'customer_on_hold_order' === $email->id) {
+    // Check if the email is the new order email and it's being sent to the admin
+    if ('new_order' === $email->id && $sent_to_admin) {
         echo '<h2>' . __('Dirección de envío', 'woocommerce') . '</h2>';
         echo '<p>' . $order->get_formatted_shipping_address() . '</p>';
 
@@ -2311,3 +2312,14 @@ function add_billing_and_shipping_address_to_emails($order, $sent_to_admin, $pla
         echo '<p>' . $order->get_formatted_billing_address() . '</p>';
     }
 }
+
+
+add_action('woocommerce_email_customer_details', 'remove_billing_address_new_order_emails', 5, 4);
+
+function remove_billing_address_new_order_emails($order, $sent_to_admin, $plain_text, $email) {
+    if ($email->id === 'new_order' && $sent_to_admin) {
+        // Remove the action that outputs the billing address
+        remove_action('woocommerce_email_customer_details', array(WC()->countries, 'email_address'), 20);
+    }
+}
+
