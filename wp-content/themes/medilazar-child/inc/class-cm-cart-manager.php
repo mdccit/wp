@@ -480,6 +480,20 @@ class Cart_Manager {
         foreach ($cart_items as $item) {
             $product = wc_get_product($item['product_id']);
             if (!$product) continue; 
+
+            $category = $product->get_attribute('category');
+            $subcategory = $product->get_attribute('subcategory');
+            // Initialize UNSPSC code as an empty string
+            $unspsc_code = '';
+
+            // Build the UNSPSC code based on available data
+            if (!empty($category) && !empty($subcategory)) {
+                $unspsc_code = $category . '-' . $subcategory;
+            } elseif (!empty($category)) {
+                $unspsc_code = $category;
+            } elseif (!empty($subcategory)) {
+                $unspsc_code = $subcategory;
+            }
     
             // Construct cXML for each cart item
             $cxmlItems .= "<ItemIn quantity=\"" . esc_attr($item['quantity']) . "\">";
@@ -490,7 +504,7 @@ class Cart_Manager {
             $cxmlItems .= "<Description xml:lang=\"es-ES\">" . esc_html($product->get_name()) . "</Description>";
             $cxmlItems .= "<UnitOfMeasure>UNIT</UnitOfMeasure>";
             $cxmlItems .= "<Classification domain=\"SPSC\"></Classification>";
-            $cxmlItems .= "<Classification domain=\"UNSPSC\"></Classification>";
+            $cxmlItems .= "<Classification domain=\"UNSPSC\">" . esc_html($unspsc_code) . "</Classification>";
             $cxmlItems .= "<ManufacturerPartID/>";
             $cxmlItems .= "<ManufacturerName/>";
             $cxmlItems .= "</ItemDetail>";
