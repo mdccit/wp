@@ -498,7 +498,7 @@ class Cart_Manager {
             // Construct cXML for each cart item
             $cxmlItems .= "<ItemIn quantity=\"" . esc_attr($item['quantity']) . "\">";
             $cxmlItems .= "<ItemID><SupplierPartID>" . esc_html($product->get_sku()) . "</SupplierPartID>";
-            $cxmlItems .= "<SupplierPartAuxiliaryID/></ItemID>";
+            $cxmlItems .= "<SupplierPartAuxiliaryID/>" . esc_html($product->get_sku()) . "</ItemID>";
             $cxmlItems .= "<ItemDetail>";
             $cxmlItems .= "<UnitPrice><Money currency=\"EUR\">" . esc_html($product->get_price()) . "</Money></UnitPrice>";
             $cxmlItems .= "<Description xml:lang=\"es-ES\">" . esc_html($product->get_name()) . "</Description>";
@@ -625,10 +625,9 @@ class Cart_Manager {
 
         $deliver_to = isset($addressElement->PostalAddress->DeliverTo) ? (string)$addressElement->PostalAddress->DeliverTo : '';
         $name = (string)$addressElement->Name;
-        $full_name = $deliver_to ? ($deliver_to . ' - ' . $name) : $name;
+        $full_name = $deliver_to ? ($name . "\n" . ' Entregar a : '. $deliver_to) : $name;
 
-    // Combine DeliverTo and Name
-    $full_name = $deliver_to ? ($deliver_to . ' - ' . $name) : $name;
+        // Combine DeliverTo and Name
         $phoneNumber = (string)$addressElement->Phone->TelephoneNumber->Number;       
     
         $Address = [

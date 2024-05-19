@@ -1352,8 +1352,8 @@ add_action('rest_api_init', function () {
 });
 
 
-function format_address_from_cxml($address) {
-    $name = (string)$address->Name;
+function format_address_from_cxml($address, $name) {
+ 
     $streetLines = [];
     foreach ($address->Street as $street) {
         $streetLines[] = (string)$street;
@@ -1363,7 +1363,7 @@ function format_address_from_cxml($address) {
     $postalCode = (string)$address->PostalCode;
     $country = (string)$address->Country;
 
-    return "$name, " . implode(", ", $streetLines) . ", $city, $state, $postalCode, $country";
+    return "$name , " . implode(", ", $streetLines) . ", $city, $state, $postalCode, $country";
 }
 
 function get_woocommerce_admin_email() {
@@ -1388,17 +1388,17 @@ add_filter('woocommerce_payment_gateways', 'cm_add_wc_gateway_manual');
 
 
 
-// add_filter('woocommerce_email_recipient_customer_processing_order', 'disable_cxml_customer_emails', 10, 2);
+add_filter('woocommerce_email_recipient_customer_processing_order', 'disable_cxml_customer_emails', 10, 2);
 // add_filter('woocommerce_email_recipient_customer_completed_order', 'disable_cxml_customer_emails', 10, 2);
 // add_filter('woocommerce_email_recipient_customer_on_hold_order', 'disable_cxml_customer_emails', 10, 2);
 
-// function disable_cxml_customer_emails($recipient, $order) {
-//     if (!$order) return $recipient; // Check if the order object exists
-//     if (is_a($order, 'WC_Order') && $order->get_meta('_created_via_cxml')) {
-//         return ''; // Return an empty string to stop the email for orders created via cXML
-//     }
-//     return $recipient;
-// }
+function disable_cxml_customer_emails($recipient, $order) {
+    if (!$order) return $recipient; // Check if the order object exists
+    if (is_a($order, 'WC_Order') && $order->get_meta('_created_via_cxml')) {
+        return ''; // Return an empty string to stop the email for orders created via cXML
+    }
+    return $recipient;
+}
 
 
 // Custom function to identify orders created via cXML
@@ -1546,7 +1546,7 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
             $order->update_meta_data('_created_via_cxml', true); 
     
             // Save contact details to order meta
-            $order->update_meta_data('_contact_name_xml', ' Mobre'.$name);
+            $order->update_meta_data('_contact_name_xml', $name);
             $order->update_meta_data('Contact Email', $email);
             $order->update_meta_data('Contact Phone', $phone);
             $order->update_meta_data('Contact Street', $street_full);
@@ -1585,7 +1585,8 @@ function create_wc_order_from_cxml(WP_REST_Request $request) {
                 if ($item) {
                     // Save delivery address details
                     $shipTo = $itemOut->ShipTo->Address;
-                    $deliveryAddress = format_address_from_cxml($shipTo->PostalAddress);
+                    $ship_to_name = $itemOut->ShipTo->Address->Name;
+                    $deliveryAddress = format_address_from_cxml($shipTo->PostalAddress, $ship_to_name);
                     $email = (string)$shipTo->Email;
                     $phone = (string)$shipTo->Phone->TelephoneNumber->Number;
 
@@ -1863,16 +1864,22 @@ function custom_order_information_meta_box_content($post) {
     // echo '<p><strong>' . __('Total del pedido :', 'medilazar') . '</strong> ' . esc_html($currency) .'' . esc_html($total) . '</p>';
     echo '</div>'; // Close column one
 
+
+
     // Column 2: Order Date
     echo '<div class="order_meta_column">';
-    echo '<p>' . esc_html($contact_name) . '</p>';
-    echo '<p>' . esc_html($contact_email) . '</p>';
-    echo '<p>' . esc_html($contact_phone) . '</p>';
+    echo '<h3> Contact </h3>';
+    echo '<p>' . esc_html($contact_name) . '</p> ';
     echo '<p>' . esc_html($contact_street) . '</p>';
     echo '<p>' . esc_html($contact_city) . '</p>';
     echo '<p>' . esc_html($contact_state) . '</p>';
-    echo '<p>' . esc_html($contact_postal_code) . '</p>';
     echo '<p><' . esc_html($contact_country) . '</p>';
+    echo '<p>' . esc_html($contact_postal_code) . '</p>';
+    
+    echo '<p><strong>Email Address:</strong> ' . esc_html($contact_email) . '</p>';
+    echo '<p><strong>Phone:</strong>' . esc_html($contact_phone) . '</p>';
+  
+    
     echo '</div>'; // Close column two
 
     // Column 3: Extrinsic
