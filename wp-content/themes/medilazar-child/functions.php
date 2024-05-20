@@ -569,6 +569,12 @@ function generate_xml_response($response_data) {
 function handle_cxml_request($cxml_body) {
     global $wpdb; // Access the WordPress DB
 
+    // Temporarily remove Wordfence login attempt logging
+    remove_action('wp_login_failed', 'wfls_login_failed');
+
+     // Temporarily disable Wordfence logging
+     add_filter('wordfence_should_log_authentication', '__return_false');
+
     // Initialize response parameters
     $returnCode = 'Failure';
     $response_message = 'An unexpected error occurred.';
@@ -682,6 +688,13 @@ function handle_cxml_request($cxml_body) {
         $returnCode = '401';
         $response_message = 'Authentication Failure';
     }
+
+    // Re-enable Wordfence logging
+    remove_filter('wordfence_should_log_authentication', '__return_false');
+
+    // Re-add Wordfence login attempt logging
+    add_action('wp_login_failed', 'wfls_login_failed');
+
 
     // Assuming you have a function to generate cXML responses
     $response_cxml = generate_cxml_response($returnCode, $response_message, html_entity_decode($loginURL),$payloadID, $language, $version);

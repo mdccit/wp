@@ -66,6 +66,7 @@ wp-content/wflogs
 # Allow only the medilazar-core plugin
 !wp-content/plugins/medilazar-core/
 !wp-content/plugins/cm-widgets-group/
+!wp-content/plugins/wordfencea
 setup.sh
 
  run_wp_cron.bat
