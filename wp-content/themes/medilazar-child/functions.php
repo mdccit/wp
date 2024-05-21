@@ -569,11 +569,11 @@ function generate_xml_response($response_data) {
 function handle_cxml_request($cxml_body) {
     global $wpdb; // Access the WordPress DB
 
+
+    define('BYPASS_WORDFENCE_LOGGING', true);
     // Temporarily remove Wordfence login attempt logging
     remove_action('wp_login_failed', 'wfls_login_failed');
 
-     // Temporarily disable Wordfence logging
-     add_filter('wordfence_should_log_authentication', '__return_false');
 
     // Initialize response parameters
     $returnCode = 'Failure';
@@ -689,8 +689,9 @@ function handle_cxml_request($cxml_body) {
         $response_message = 'Authentication Failure';
     }
 
-    // Re-enable Wordfence logging
-    remove_filter('wordfence_should_log_authentication', '__return_false');
+    // Cleanup: Remove the constant after authentication
+    defined('BYPASS_WORDFENCE_LOGGING') && !defined('CONSTANT_BYPASS_WORDFENCE_LOGGING') && defined('BYPASS_WORDFENCE_LOGGING') && defined('REMOVE_CONSTANT_BYPASS_WORDFENCE_LOGGING');
+
 
     // Re-add Wordfence login attempt logging
     add_action('wp_login_failed', 'wfls_login_failed');
@@ -1376,7 +1377,10 @@ function format_address_from_cxml($address, $name) {
     $postalCode = (string)$address->PostalCode;
     $country = (string)$address->Country;
 
-    return "$name , " . implode(", ", $streetLines) . ", $city, $state, $postalCode, $country";
+    $deliver_to = isset($address->DeliverTo) ? (string)$address->DeliverTo : ''; 
+    $full_name = $deliver_to ? ($name . "\n" . ' Entregar a : '. $deliver_to) : $name;
+
+    return "$full_name , " . implode(", ", $streetLines) . ", $city, $state, $postalCode, $country";
 }
 
 function get_woocommerce_admin_email() {
@@ -2174,7 +2178,9 @@ function restrict_account_access_for_customers() {
     }
 }
 
-####   RESTRICT PRODUCT BY SUB CATEGORIES
+####   RESTRICT PRODUCT BY CATEGORIES , SUB CATEGORIES
+
+/*
 
 add_action('pre_get_posts', 'restrict_products_by_user_subcategory');
 
@@ -2311,6 +2317,9 @@ function modify_carousel_product_args($args) {
     return $args;
 }
 
+*/
+
+####  END  RESTRICT PRODUCT BY CATEGORIES , SUB CATEGORIES
 
 
 add_action( 'woocommerce_email_customer_details', 'remove_email_billing_address', 1 );

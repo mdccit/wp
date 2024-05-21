@@ -473,15 +473,17 @@ class Cart_Manager {
     
         // Unserialize the cart data
         $cart_items = unserialize($serialized_cart_data);
-   
+    
         // Initialize the cXML items string
         $cxmlItems = '';
     
+        // Array to store all UNSPSC codes
+        $allCodes = [];
+    
         foreach ($cart_items as $item) {
             $product = wc_get_product($item['product_id']);
-
             if (!$product) continue; 
-
+    
             $categories = wp_get_post_terms($item['product_id'], 'product_cat', array('fields' => 'names'));
             if (!is_wp_error($categories)) {
                 if (!empty($categories)) {
@@ -492,31 +494,28 @@ class Cart_Manager {
             } else {
                 error_log('Error retrieving categories: ' . $categories->get_error_message());
             }
-
-            // Initialize UNSPSC code as an empty string
-            $unspsc_code = '';
-
+    
+            // Get UNSPSC codes for the product
             $unspsc_codes = $this->get_unspsc_codes($item['product_id']);
-            $allCodes = [];
-
+    
             // Collect all UNSPSC codes into an array
             foreach ($unspsc_codes as $unspsc_code) {
                 $allCodes[] = esc_html($unspsc_code);
             }
-            $uniqueCodes = array_unique($allCodes);
-        
+
+               // Remove duplicate UNSPSC codes
+        $uniqueCodes = array_unique($allCodes);
+    
             // Construct cXML for each cart item
             $cxmlItems .= "<ItemIn quantity=\"" . esc_attr($item['quantity']) . "\">";
             $cxmlItems .= "<ItemID><SupplierPartID>" . esc_html($product->get_sku()) . "</SupplierPartID>";
-            $cxmlItems .= "<SupplierPartAuxiliaryID/>" . esc_html($product->get_sku()) . "</ItemID>";
+            $cxmlItems .= "<SupplierPartAuxiliaryID>" . esc_html($product->get_sku()) . "</SupplierPartAuxiliaryID></ItemID>";
             $cxmlItems .= "<ItemDetail>";
             $cxmlItems .= "<UnitPrice><Money currency=\"EUR\">" . esc_html($product->get_price()) . "</Money></UnitPrice>";
             $cxmlItems .= "<Description xml:lang=\"es-ES\">" . esc_html($product->get_name()) . "</Description>";
             $cxmlItems .= "<UnitOfMeasure>UNIT</UnitOfMeasure>";
             $cxmlItems .= "<Classification domain=\"SPSC\"></Classification>";
-            $cxmlItems .= "<Classification domain=\"UNSPSC\">" . implode(' , ', $uniqueCodes) . "</Classification>";
-            $cxmlItems .= "<ManufacturerPartID/>";
-            $cxmlItems .= "<ManufacturerName/>";
+            $cxmlItems .= "<Classification domain=\"UNSPSC\">" . implode(', ', $uniqueCodes) . "</Classification>";
             $cxmlItems .= "</ItemDetail>";
             $cxmlItems .= "</ItemIn>";
         }
@@ -524,8 +523,7 @@ class Cart_Manager {
         return $cxmlItems;
     }
     
-
-    function get_unspsc_codes($product_id ) {
+    function get_unspsc_codes($product_id) {
         $taxonomy = 'product_cat';
         $terms = wp_get_post_terms($product_id, $taxonomy, array('fields' => 'all'));
         $hierarchy = array();
@@ -554,24 +552,27 @@ class Cart_Manager {
         foreach ($hierarchy as $parent) {
             $unspsc_code = '';
             if (!empty($parent['term'])) {
-                $unspsc_code .= $parent['term']->name;
+                // Parent term exists
+                $unspsc_code = $parent['term']->name;
+                $codes[] = $unspsc_code; // Include parent-only code
+    
                 foreach ($parent['children'] as $child) {
-                    $unspsc_code .= '-' . $child->name;
+                    $unspsc_code_with_child = $unspsc_code . '-' . $child->name;
+                    $codes[] = $unspsc_code_with_child; // Include parent with children code
                 }
-                $codes[] = $unspsc_code;
-            } elseif (!empty($parent['children'])) { // Handling orphaned sub-categories
+            } elseif (!empty($parent['children'])) { 
+                // Handling orphaned sub-categories
                 foreach ($parent['children'] as $child) {
-                    $unspsc_code .= ($unspsc_code ? '-' : '') . $child->name;
+                    $unspsc_code = $child->name;
+                    $codes[] = $unspsc_code; // Include orphaned sub-category code
                 }
-                $codes[] = $unspsc_code;
             }
         }
     
         return $codes;
     }
     
- 
-
+    
     function sendPunchOutOrder($cxmlData)
     {
         global $wpdb ,$session_manager;

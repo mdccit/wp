@@ -41,7 +41,7 @@ class CM_WC_Gateway_Manual extends WC_Payment_Gateway {
             'enabled' => array(
                 'title'   => 'Enable/Disable',
                 'type'    => 'checkbox',
-                'label'   => 'Enable Custom Manual Payment',
+                'label'   => 'Enable Direct Payment',
                 'default' => 'yes'
             ),
             'title' => array(
