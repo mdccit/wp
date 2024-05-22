@@ -69,6 +69,7 @@ wp-conent/wflogs/config-synced.php
 !wp-content/plugins/cm-widgets-group/
 !wp-content/plugins/wordfencea
 !wp-content/plugins/radios-tools
+!wp-content/plugins/elementor
 setup.sh
 
  run_wp_cron.bat
