@@ -17,14 +17,25 @@ if (!class_exists('OSF_Elementor_Products')) {
 use Elementor\Controls_Manager;
 use Elementor\Group_Control_Typography;
 
-class Custom_Elementor_Products extends OSF_Elementor_Products {
+class Products extends OSF_Elementor_Products {
 
     public function get_categories() {
         return array('opal-addons');
     }
 
+
     public function query_products() {
-        $query = parent::query_products();
+        // Define the method content as needed
+        $args = array(
+            'post_type' => 'product',
+            'posts_per_page' => -1,
+        );
+        $query = new WP_Query($args);
+        return $query;
+    }
+
+    public function query_products_custom() {
+        $query = $this->query_products();
 
         $user_id = get_current_user_id();
         $restricted_categories_names = get_field('User_Restricted_Products', 'user_' . $user_id);
@@ -561,8 +572,3 @@ class Custom_Elementor_Products extends OSF_Elementor_Products {
         echo $shortcode->get_content();
     }
 }
-
-// Register the custom widget
-add_action('elementor/widgets/widgets_registered', function() {
-    \Elementor\Plugin::instance()->widgets_manager->register(new \Custom_Elementor_Products());
-});
