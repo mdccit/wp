@@ -572,3 +572,8 @@ class Products extends OSF_Elementor_Products {
         echo $shortcode->get_content();
     }
 }
+
+// Register the custom widget
+add_action('elementor/widgets/widgets_registered', function() {
+    \Elementor\Plugin::instance()->widgets_manager->register(new Custom_Elementor_Products());
+});
