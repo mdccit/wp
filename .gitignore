@@ -71,6 +71,7 @@ wp-conent/wflogs/config-synced.php
 !wp-content/plugins/radios-tools
 !wp-content/plugins/elementor
 !wp-content/plugins/carousel-widget
+!wp-content/plugins/custom-elementor-products
 
 setup.sh
 
