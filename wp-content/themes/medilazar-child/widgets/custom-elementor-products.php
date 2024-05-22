@@ -4,22 +4,6 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
 
-// if (!class_exists('Widget_Base')) {
-//     require_once 'widget-base.php'; // Adjust the path if necessary
-// }
-
-
-
-// // Ensure the base class is loaded
-if (!class_exists('OSF_Elementor_Carousel_Base')) {
-    require_once WP_PLUGIN_DIR . '/medilazar-core/inc/vendors/elementor/abstract/carousel.php'; // Adjust the path if necessary
-}
-
-
-// Ensure the original class is loaded before extending it
-if (!class_exists('OSF_Elementor_Products')) {
-    require_once WP_PLUGIN_DIR . '/medilazar-core/inc/vendors/elementor/widgets/products.php';
-}
 
 use Elementor\Controls_Manager;
 use Elementor\Group_Control_Typography;
