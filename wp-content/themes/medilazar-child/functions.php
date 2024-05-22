@@ -2180,7 +2180,6 @@ function restrict_account_access_for_customers() {
 
 ####   RESTRICT PRODUCT BY CATEGORIES , SUB CATEGORIES
 
-/*
 
 add_action('pre_get_posts', 'restrict_products_by_user_subcategory');
 
@@ -2284,6 +2283,28 @@ function block_direct_access_to_restricted_products() {
 }
 
 
+add_action('elementor/query/debug', 'elementor_query_debug');
+
+function elementor_query_debug($query) {
+    error_log(print_r($query->query_vars, true));
+}
+
+
+function override_opal_products_widget() {
+    // Ensure Elementor is loaded before modifying widgets
+    if (did_action('elementor/loaded')) {
+        // Unregister the original widget
+        $elementor = \Elementor\Plugin::instance();
+        $widgets_manager = $elementor->widgets_manager;
+        $widgets_manager->unregister('OSF_Elementor_Products');
+
+        // Include and register the custom widget
+        require_once get_stylesheet_directory() . '/widgets/custom-elementor-products.php';
+        $widgets_manager->register(new \Custom_Elementor_Products());
+    }
+}
+add_action('elementor/widgets/widgets_registered', 'override_opal_products_widget', 15);
+
 
 add_filter('carousel_product_args', 'modify_carousel_product_args');
 
@@ -2317,7 +2338,8 @@ function modify_carousel_product_args($args) {
     return $args;
 }
 
-*/
+
+
 
 ####  END  RESTRICT PRODUCT BY CATEGORIES , SUB CATEGORIES
 

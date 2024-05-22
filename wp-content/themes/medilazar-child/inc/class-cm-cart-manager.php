@@ -522,7 +522,7 @@ class Cart_Manager {
     
         return $cxmlItems;
     }
-    
+
     function get_unspsc_codes($product_id) {
         $taxonomy = 'product_cat';
         $terms = wp_get_post_terms($product_id, $taxonomy, array('fields' => 'all'));
@@ -550,26 +550,55 @@ class Cart_Manager {
         // Build separate UNSPSC codes for each top-level category
         $codes = [];
         foreach ($hierarchy as $parent) {
-            $unspsc_code = '';
-            if (!empty($parent['term'])) {
-                // Parent term exists
-                $unspsc_code = $parent['term']->name;
-                $codes[] = $unspsc_code; // Include parent-only code
-    
+            if (!empty($parent['term']) && empty($parent['children'])) {
+                // Parent term exists and has no children
+                $codes[] = $parent['term']->name; // Include parent-only code
+            } elseif (!empty($parent['term']) && !empty($parent['children'])) {
+                // Parent term exists and has children, include only parent with subcategories
                 foreach ($parent['children'] as $child) {
-                    $unspsc_code_with_child = $unspsc_code . '-' . $child->name;
+                    $unspsc_code_with_child = $parent['term']->name . '-' . $child->name;
                     $codes[] = $unspsc_code_with_child; // Include parent with children code
                 }
-            } elseif (!empty($parent['children'])) { 
-                // Handling orphaned sub-categories
+            } elseif (empty($parent['term']) && !empty($parent['children'])) {
+                // Handling orphaned sub-categories: include only subcategories without their own parent
                 foreach ($parent['children'] as $child) {
-                    $unspsc_code = $child->name;
-                    $codes[] = $unspsc_code; // Include orphaned sub-category code
+                    $is_orphan = true;
+                    foreach ($hierarchy as $potential_parent) {
+                        if (!empty($potential_parent['term']) && $child->parent == $potential_parent['term']->term_id) {
+                            $is_orphan = false;
+                            break;
+                        }
+                    }
+                    if ($is_orphan) {
+                        $codes[] = $child->name; // Include orphaned sub-category code
+                    }
                 }
             }
         }
     
-        return $codes;
+        // Filter out "category-sub category" codes if both parent and child exist standalone
+        $filtered_codes = array_filter($codes, function($code) use ($codes) {
+            if (strpos($code, '-') !== false) {
+                list($parent, $child) = explode('-', $code);
+                return !(in_array($parent, $codes) && in_array($child, $codes));
+            }
+            return true;
+        });
+    
+        // Remove orphaned subcategories that are part of a parent-child combination
+        $filtered_codes = array_filter($filtered_codes, function($code) use ($filtered_codes) {
+            if (strpos($code, '-') === false) {
+                // If it's a standalone subcategory, check if it's part of any parent-child combination
+                foreach ($filtered_codes as $combined_code) {
+                    if (strpos($combined_code, '-') !== false && strpos($combined_code, $code) !== false) {
+                        return false; // Exclude the standalone subcategory
+                    }
+                }
+            }
+            return true;
+        });
+    
+        return array_unique($filtered_codes);
     }
     
     
