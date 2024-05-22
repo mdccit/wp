@@ -2290,20 +2290,6 @@ function elementor_query_debug($query) {
 }
 
 
-function override_opal_products_widget() {
-    // Ensure Elementor is loaded before modifying widgets
-    if (did_action('elementor/loaded')) {
-        // Unregister the original widget
-        $elementor = \Elementor\Plugin::instance();
-        $widgets_manager = $elementor->widgets_manager;
-        $widgets_manager->unregister('OSF_Elementor_Products');
-
-        // Include and register the custom widget
-        require_once get_stylesheet_directory() . '/widgets/custom-elementor-products.php';
-        $widgets_manager->register(new \Custom_Elementor_Products());
-    }
-}
-add_action('elementor/widgets/widgets_registered', 'override_opal_products_widget', 15);
 
 
 add_filter('carousel_product_args', 'modify_carousel_product_args');
