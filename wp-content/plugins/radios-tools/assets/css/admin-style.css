@@ -1,0 +1,89 @@
+.csf-theme-dark .csf-nav ul ul li .csf-active {
+    background: linear-gradient(
+90deg, #e53e29 0%, #e53e29 100%);
+}
+.csf-theme-dark .csf-nav ul li a {
+    color: #999;
+    border-color: #040a1b;
+    background-color: #121622;
+}
+.csf-nav ul ul li a {
+    padding: 15px 14px 15px 24px;
+}
+.csf-nav ul li a {
+    padding: 15px 12px;
+}
+.csf-theme-dark .csf-nav-background {
+    background-color: #121622;
+}
+.csf-footer {
+    padding: 40px;
+}
+.csf-theme-dark .csf-footer {
+    background-color: #121622;
+}
+.csf-theme-dark .csf-header-inner {
+    background-color: #121622;
+}
+
+input.button.button-primary.csf-top-save.csf-save {
+    height: 44px;
+}
+.button.button-primary.csf-cloneable-add {
+    line-height: 44px;
+}
+.csf-field-switcher .csf--active {
+    background: linear-gradient(
+90deg, #e53e29 0%, #e53e29 100%);
+}
+.csf-field-switcher .csf--switcher {
+    width: 80px;
+    height: 40px;
+}
+.csf-field-switcher .csf--active {
+    background: linear-gradient(
+90deg, #e53e29 0%, #e53e29 100%);
+}
+.csf-field-switcher .csf--off, .csf-field-switcher .csf--on {
+    line-height: 40px;
+}
+.csf-field-switcher .csf--active .csf--ball {
+    margin-left: -32px;
+}
+.csf-field-switcher .csf--ball {
+    top: 10px;
+}
+.csf-field-switcher .csf--ball {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+}
+.csf-field-switcher .csf--off, .csf-field-switcher .csf--on {
+    font-size: 14px;
+}
+.csf-buttons .button {
+    margin: 0 5px;
+}
+a.button.button-primary.csf-icon-add, a.button.csf-warning-primary.csf-icon-remove,
+a.button.button-primary.csf--button {
+    line-height: 44px;
+}
+
+.csf-field-switcher .csf--switcher {
+    background-color: #d33434;
+}
+.csf-field-switcher .csf--ball {
+    left: 10px;
+}
+.csf-field-slider .ui-slider-handle:hover, .csf-field-slider .ui-state-active, .csf-field-slider .ui-slider-handle{
+    background: linear-gradient(
+90deg, #e53e29 0%, #e53e29 100%);
+}
+.csf-field-slider .ui-slider-range {
+    background: linear-gradient(
+90deg, #e53e29 0%, #e53e29 100%);
+}
+.csf-theme-dark .csf-nav ul li .csf-active {
+    background: linear-gradient(
+90deg, #e53e29 0%, #e53e29 100%);
+}
