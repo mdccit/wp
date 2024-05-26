@@ -524,31 +524,23 @@ class Cart_Manager {
     }
 
     function get_unspsc_codes($product_id) {
-        // Define the taxonomy for product categories
         $taxonomy = 'product_cat';
-        
-        // Retrieve all terms (categories) associated with the given product ID
         $terms = wp_get_post_terms($product_id, $taxonomy, array('fields' => 'all'));
     
-        // If there is an error or no terms are found, return an empty array
         if (is_wp_error($terms) || empty($terms)) {
             return []; // Return an empty array if there are no terms or an error occurred
         }
     
-        // Initialize an empty hierarchy array
         $hierarchy = array();
     
         // Build the hierarchy for the given product's terms
         foreach ($terms as $term) {
-            // Add each term to the hierarchy array if it's not already present
             if (!isset($hierarchy[$term->term_id])) {
                 $hierarchy[$term->term_id] = array('term' => $term, 'children' => array());
             }
         }
     
-        // Populate the children for each parent term
         foreach ($terms as $term) {
-            // If the term has a parent, add it to the parent's children array
             if ($term->parent != 0) {
                 if (isset($hierarchy[$term->parent])) {
                     $hierarchy[$term->parent]['children'][] = $term;
@@ -558,14 +550,39 @@ class Cart_Manager {
             }
         }
     
-        // Initialize an empty array to store the UNSPSC codes
         $codes = [];
         
         // Process the hierarchy to generate UNSPSC codes
         foreach ($hierarchy as $parent) {
-            // If the parent has no children, add the parent term's name as a code
             if (!empty($parent['term']) && empty($parent['children'])) {
+                // Case 1: Categories which don't have children
                 $codes[] = $parent['term']->name; 
+            } elseif (!empty($parent['term']) && !empty($parent['children'])) {
+                // Case 2: Categories with children as 'category name - subcategory name'
+                foreach ($parent['children'] as $child) {
+                    $unspsc_code_with_child = $parent['term']->name . '-' . $child->name;
+                    $codes[] = $unspsc_code_with_child;
+                }
+            } elseif (empty($parent['term']) && !empty($parent['children'])) {
+                // Case 3: Subcategories which don't have a parent category
+                foreach ($parent['children'] as $child) {
+                    $is_orphan = true;
+                    foreach ($hierarchy as $potential_parent) {
+                        if (!empty($potential_parent['term']) && $child->parent == $potential_parent['term']->term_id) {
+                            $is_orphan = false;
+                            break;
+                        }
+                    }
+                    if ($is_orphan) {
+                        $codes[] = $child->name;
+                    }
+                }
+            }
+        }
+    
+        // Return unique and relevant UNSPSC codes
+        return array_unique($codes);
+    }
     
     
     // function get_unspsc_codes($product_id) {
