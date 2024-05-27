@@ -939,7 +939,6 @@ class CM_Products extends \Elementor\Widget_Base
      * @access protected
      */
     protected function render() {
-        echo 'sss';
         $settings = $this->get_settings_for_display();
         $this->woocommerce_default($settings);
     }

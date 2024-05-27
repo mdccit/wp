@@ -482,7 +482,6 @@ class OSF_Elementor_Products extends OSF_Elementor_Carousel_Base {
                 ];
             }
         }
-        
     
         if ($settings['product_layout'] == 'grid') {
             $atts['class']          = 'woocommerce-product-grid';
@@ -529,9 +528,9 @@ class OSF_Elementor_Products extends OSF_Elementor_Carousel_Base {
         if ($settings['enable_carousel'] === 'yes') {
             $atts['carousel_settings'] = json_encode(wp_slash($this->get_carousel_settings()));
             $atts['enable_carousel']   = 'yes';
-    
+
         } else {
-    
+
             if (!empty($settings['column_tablet'])) {
                 $atts['class'] .= ' columns-tablet-' . $settings['column_tablet'];
             }
@@ -545,30 +544,10 @@ class OSF_Elementor_Products extends OSF_Elementor_Carousel_Base {
             $atts['paginate'] = 'true';
         }
 
-        // Convert $atts to query args
-        $query_args = $this->shortcode_atts_to_args($atts, $type);
-    
         $shortcode = new WC_Shortcode_Products($atts, $type);
-    
+
         echo $shortcode->get_content();
     }
-    
-        /**
-     * Convert shortcode attributes to query arguments
-     */
-    function shortcode_atts_to_args($atts, $type) {
-        $args = [
-            'post_type'      => 'product',
-            'posts_per_page' => $atts['limit'],
-            'orderby'        => $atts['orderby'],
-            'order'          => $atts['order'],
-            'tax_query'      => isset($atts['tax_query']) ? $atts['tax_query'] : [],
-        ];
-
-        return $args;
-    }
 }
-
-
 
 $widgets_manager->register(new OSF_Elementor_Products());
