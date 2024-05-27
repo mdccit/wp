@@ -37,5 +37,6 @@ function register_cm_elementor($widgets_manager)
 
     require_once(__DIR__ . '/widgets/products.php');
     $widgets_manager->register(new \CM_Products());
+    // $widgets_manager->register(new \CM_Carousel());
 }
 add_action('elementor/widgets/register', 'register_cm_elementor');

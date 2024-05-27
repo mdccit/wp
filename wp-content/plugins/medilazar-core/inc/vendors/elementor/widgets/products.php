@@ -460,32 +460,55 @@ class OSF_Elementor_Products extends OSF_Elementor_Carousel_Base {
             'product_layout' => $settings['product_layout'],
             'class'          => 'elementor-product-style-' . $settings['product_layout'],
         ];
-
+    
+        // Fetch restricted categories for the current user
+        $user_id = get_current_user_id();
+        $restricted_categories = get_field('User_Restricted_Products', 'user_' . $user_id);
+    
+        if ($restricted_categories) {
+            error_log('Restricted categories (raw): ' . print_r($restricted_categories, true));
+            $category_ids = array_map('intval', $restricted_categories);
+            error_log('Restricted categories (after intval): ' . print_r($category_ids, true));
+    
+            if (!empty($category_ids)) {
+                error_log('Excluding categories: ' . implode(', ', $category_ids));
+                $atts['tax_query'] = [
+                    [
+                        'taxonomy' => 'product_cat',
+                        'field'    => 'term_id',
+                        'terms'    => $category_ids,
+                        'operator' => 'NOT IN',
+                    ],
+                ];
+            }
+        }
+        
+    
         if ($settings['product_layout'] == 'grid') {
             $atts['class']          = 'woocommerce-product-grid';
             $atts['product_layout'] = 'grid';
-
+    
             if (!empty($settings['grid_layout'])) {
                 $atts['class'] .= ' woocommerce-product-grid-' . $settings['grid_layout'];
             }
         }
-
+    
         if ($settings['product_layout'] == 'list') {
             $atts['class']          = 'woocommerce-product-list';
             $atts['product_layout'] = 'grid';
-
+    
             if (!empty($settings['list_layout'])) {
                 $atts['class'] .= ' woocommerce-product-list-' . $settings['list_layout'];
             }
-
+    
             if (!empty($settings['list_layout']) && $settings['list_layout'] == 3) {
                 $atts['product_layout'] = 'list';
                 $atts['show_rating']    = true;
             }
         }
-
+    
         $atts = $this->get_product_type($atts, $settings['product_type']);
-
+    
         if (isset($atts['on_sale']) && wc_string_to_bool($atts['on_sale'])) {
             $type = 'sale_products';
             if (!empty($settings['show_time_sale']) && $settings['show_time_sale'] == 'yes') {
@@ -496,36 +519,56 @@ class OSF_Elementor_Products extends OSF_Elementor_Carousel_Base {
         } elseif (isset($atts['top_rated']) && wc_string_to_bool($atts['top_rated'])) {
             $type = 'top_rated_products';
         }
-
+    
         if (!empty($settings['categories'])) {
             $atts['category']     = implode(',', $settings['categories']);
             $atts['cat_operator'] = $settings['cat_operator'];
         }
-
+    
         // Carousel
         if ($settings['enable_carousel'] === 'yes') {
             $atts['carousel_settings'] = json_encode(wp_slash($this->get_carousel_settings()));
             $atts['enable_carousel']   = 'yes';
-
+    
         } else {
-
+    
             if (!empty($settings['column_tablet'])) {
                 $atts['class'] .= ' columns-tablet-' . $settings['column_tablet'];
             }
-
+    
             if (!empty($settings['column_mobile'])) {
                 $atts['class'] .= ' columns-mobile-' . $settings['column_mobile'];
             }
         }
-
+    
         if ($settings['paginate'] === 'pagination') {
             $atts['paginate'] = 'true';
         }
 
+        // Convert $atts to query args
+        $query_args = $this->shortcode_atts_to_args($atts, $type);
+    
         $shortcode = new WC_Shortcode_Products($atts, $type);
-
+    
         echo $shortcode->get_content();
     }
+    
+        /**
+     * Convert shortcode attributes to query arguments
+     */
+    function shortcode_atts_to_args($atts, $type) {
+        $args = [
+            'post_type'      => 'product',
+            'posts_per_page' => $atts['limit'],
+            'orderby'        => $atts['orderby'],
+            'order'          => $atts['order'],
+            'tax_query'      => isset($atts['tax_query']) ? $atts['tax_query'] : [],
+        ];
+
+        return $args;
+    }
 }
+
+
 
 $widgets_manager->register(new OSF_Elementor_Products());
