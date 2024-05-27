@@ -2181,30 +2181,17 @@ function restrict_account_access_for_customers() {
 ####   RESTRICT PRODUCT BY CATEGORIES , SUB CATEGORIES
 
 
+// Function to restrict products by user subcategory
 add_action('pre_get_posts', 'restrict_products_by_user_subcategory');
-
 function restrict_products_by_user_subcategory($query) {
-    // Only run this on the frontend and not on admin pages
     if (!is_admin() && (is_shop() || is_product_category() || is_front_page())) {
         if ($query->is_main_query()) {
             $user_id = get_current_user_id();
-            error_log('Running product restriction for User ID: ' . $user_id);
 
-            // Get restricted categories from ACF field, assuming it returns comma-separated names
-            $restricted_categories_names = get_field('User_Restricted_Products', 'user_' . $user_id);
-            error_log('Fetched restricted categories: ' . $restricted_categories_names);
-
-            if (!empty($restricted_categories_names)) {
-                $category_names = explode(',', $restricted_categories_names);
-                $category_ids = array();
-
-                // Convert category names to term IDs
-                foreach ($category_names as $category_name) {
-                    $term = get_term_by('name', trim($category_name), 'product_cat');
-                    if ($term) {
-                        $category_ids[] = (int) $term->term_id;
-                    }
-                }
+            $restricted_categories = get_field('User_Restricted_Products', 'user_' . $user_id);
+   
+            if (!empty($restricted_categories)) {
+                $category_ids = array_map('intval', $restricted_categories);
 
                 if (!empty($category_ids)) {
                     $tax_query = $query->get('tax_query') ?: array();
@@ -2215,33 +2202,24 @@ function restrict_products_by_user_subcategory($query) {
                         'operator' => 'NOT IN',
                     );
                     $query->set('tax_query', $tax_query);
-                    error_log('Tax Query Modified: ' . print_r($tax_query, true));
                 }
-        } else {
-            error_log('No restricted categories set for User ID ' . $user_id);
-        }
+            } else {
+                error_log('No restricted categories set for User ID ' . $user_id);
+            }
         }
     }
 }
 
-
-add_action('woocommerce_product_query', 'custom_handle_product_query_restriction');
-function custom_handle_product_query_restriction($query) {
+// Function to handle product query restriction
+add_action('woocommerce_product_query', 'cm_handle_product_query_restriction');
+function cm_handle_product_query_restriction($query) {
     if (!is_admin()) { // Ensure this runs only on the front end
         $user_id = get_current_user_id();
-        $restricted_categories_names = get_field('User_Restricted_Products', 'user_' . $user_id);
-        
-        if ($restricted_categories_names) {
-            $category_names = explode(',', $restricted_categories_names);
-            $category_ids = [];
-            
-            foreach ($category_names as $category_name) {
-                $term = get_term_by('name', trim($category_name), 'product_cat');
-                if ($term) {
-                    $category_ids[] = $term->term_id;
-                }
-            }
-            
+        $restricted_categories = get_field('User_Restricted_Products', 'user_' . $user_id);
+
+        if ($restricted_categories) {
+            $category_ids = array_map('intval', $restricted_categories);
+
             if (!empty($category_ids)) {
                 $tax_query = $query->get('tax_query') ?: [];
                 $tax_query[] = [
@@ -2256,7 +2234,7 @@ function custom_handle_product_query_restriction($query) {
     }
 }
 
-
+// Function to block direct access to restricted products
 add_action('template_redirect', 'block_direct_access_to_restricted_products');
 function block_direct_access_to_restricted_products() {
     if (is_product()) {
@@ -2265,14 +2243,12 @@ function block_direct_access_to_restricted_products() {
 
         if ($product) {
             $user_id = get_current_user_id();
-            $restricted_categories_names = get_field('User_Restricted_Products', 'user_' . $user_id);
+            $restricted_categories = get_field('User_Restricted_Products', 'user_' . $user_id);
 
-            if ($restricted_categories_names) {
-                $category_names = explode(',', $restricted_categories_names);
-                foreach ($category_names as $category_name) {
-                    $term = get_term_by('name', trim($category_name), 'product_cat');
-                    if ($term && has_term($term->term_id, 'product_cat', $product->get_id())) {
-                        // Redirect to shop page or home page
+            if ($restricted_categories) {
+                $category_ids = array_map('intval', $restricted_categories);
+                foreach ($category_ids as $category_id) {
+                    if (has_term($category_id, 'product_cat', $product->get_id())) {
                         wp_redirect(home_url());
                         exit;
                     }
@@ -2282,6 +2258,46 @@ function block_direct_access_to_restricted_products() {
     }
 }
 
+
+// Function to exclude restricted categories from sidebar widget
+add_filter('woocommerce_product_categories_widget_args', 'exclude_restricted_categories_from_sidebar');
+function exclude_restricted_categories_from_sidebar($args) {
+    // Initialize debug logging
+    error_log('Running exclude_restricted_categories_from_sidebar function');
+
+    $user_id = get_current_user_id();
+    // Fetch restricted categories from ACF
+    $restricted_categories = get_field('user_restricted_products', 'user_' . $user_id);
+
+    // Check if the ACF field exists and fetches correctly
+    if ($restricted_categories === false) {
+        error_log('ACF field "user_restricted_products" does not exist or is not accessible.');
+        return $args;
+    }
+
+    // Log the fetched restricted categories
+    error_log('Fetched restricted categories: ' . print_r($restricted_categories, true));
+
+    if (!empty($restricted_categories)) {
+        // Convert restricted categories to integer array
+        $category_ids = array_map('intval', $restricted_categories);
+        error_log('Category IDs to exclude: ' . implode(', ', $category_ids));
+
+        if (!empty($category_ids)) {
+            // Ensure the 'exclude' key is set in the widget args
+            if (!isset($args['exclude'])) {
+                $args['exclude'] = [];
+            }
+            // Merge existing exclusions with the new category IDs
+            $args['exclude'] = array_merge($args['exclude'], $category_ids);
+            error_log('Updated widget args: ' . print_r($args, true));
+        }
+    } else {
+        error_log('No restricted categories set for User ID ' . $user_id);
+    }
+    
+    return $args;
+}
 
 add_action('elementor/query/debug', 'elementor_query_debug');
 
