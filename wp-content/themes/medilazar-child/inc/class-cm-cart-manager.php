@@ -477,8 +477,6 @@ class Cart_Manager {
         // Initialize the cXML items string
         $cxmlItems = '';
     
-        // Array to store all UNSPSC codes
-        $allCodes = [];
     
         foreach ($cart_items as $item) {
             $product = wc_get_product($item['product_id']);
@@ -497,15 +495,7 @@ class Cart_Manager {
     
             // Get UNSPSC codes for the product
             $unspsc_codes = $this->get_unspsc_codes($item['product_id']);
-    
-            // Collect all UNSPSC codes into an array
-            foreach ($unspsc_codes as $unspsc_code) {
-                $allCodes[] = esc_html($unspsc_code);
-            }
-
-               // Remove duplicate UNSPSC codes
-        $uniqueCodes = array_unique($allCodes);
-    
+        
             // Construct cXML for each cart item
             $cxmlItems .= "<ItemIn quantity=\"" . esc_attr($item['quantity']) . "\">";
             $cxmlItems .= "<ItemID><SupplierPartID>" . esc_html($product->get_sku()) . "</SupplierPartID>";
@@ -515,141 +505,96 @@ class Cart_Manager {
             $cxmlItems .= "<Description xml:lang=\"es-ES\">" . esc_html($product->get_name()) . "</Description>";
             $cxmlItems .= "<UnitOfMeasure>UNIT</UnitOfMeasure>";
             $cxmlItems .= "<Classification domain=\"SPSC\"></Classification>";
-            $cxmlItems .= "<Classification domain=\"UNSPSC\">" . implode(', ', $uniqueCodes) . "</Classification>";
+            $cxmlItems .= "<Classification domain=\"UNSPSC\">" . implode(', ', $unspsc_codes) . "</Classification>";
             $cxmlItems .= "</ItemDetail>";
             $cxmlItems .= "</ItemIn>";
+            //error_log(' UNSPSC CODES : ' . implode(', ', $unspsc_codes));
         }
-    
+        
+     
+     
         return $cxmlItems;
     }
 
-    function get_unspsc_codes($product_id) {
-        $taxonomy = 'product_cat';
-        $terms = wp_get_post_terms($product_id, $taxonomy, array('fields' => 'all'));
-    
-        if (is_wp_error($terms) || empty($terms)) {
-            return []; // Return an empty array if there are no terms or an error occurred
+	
+	function get_unspsc_codes($product_id){
+        $item = array(
+        'product_id' => $product_id, 
+        );
+
+        // Get product categories associated with the product ID as an array of names
+        $categories = wp_get_post_terms( $item['product_id'], 'product_cat', array( 'fields' => 'all' ) );
+        $categories_arr =  $this->convert_wp_term_to_array($categories);
+
+        $parent_categories = array();
+        $child_categories = array();
+
+        // Separate parent and child categories
+        foreach ( $categories_arr as $category ) {
+            if ( $category['parent'] == 0 ) {
+                $parent_categories[] = $category;
+            } else {
+                $child_categories[] = $category;
+            }
         }
+
+        // Merge parent and child categories
+        $sorted_categories = array_merge( $parent_categories, $child_categories );
+
+        $organized_categories = array();
+
+        // Group categories by their parent IDs
+        foreach ( $sorted_categories as $cat ) {
+            if ( $cat['parent'] == 0 ) {
+                // If the category is a parent, add it directly to the array
+                $organized_categories[ $cat['term_id'] ] = $cat;
+            } else {
+                // If the category is a child, add it under its parent category
+                $parent_id = $cat['parent'];
+                if ( !isset($organized_categories[ $parent_id ]['sub']) ) {
+                    $organized_categories[ $parent_id ]['sub'] = array();
+                }
+                $organized_categories[ $parent_id ]['sub'] = $cat;
+            }
+        }
+
+        $formatted_categories = array();
+
+        foreach ( $organized_categories as $cat ) {
+            if(isset($cat['term_id']) && isset($cat['sub'])) {
+                $formatted_categories[] = $cat['name'] . ' - ' . $cat['sub']['name'];
+            } elseif(!isset($cat['term_id']) && isset($cat['sub'])) {
+                $formatted_categories[] = $cat['sub']['name'];
+            } else {
+                $formatted_categories[] = $cat['name'];
+            }
+        }
+
+        return $formatted_categories;
+
+	}
+
+    function convert_wp_term_to_array($terms) {
+        $terms_array = array();
     
-        $hierarchy = array();
-    
-        // Build the hierarchy for the given product's terms
         foreach ($terms as $term) {
-            if (!isset($hierarchy[$term->term_id])) {
-                $hierarchy[$term->term_id] = array('term' => $term, 'children' => array());
-            }
+            $terms_array[] = array(
+                'term_id' => $term->term_id,
+                'name' => $term->name,
+                'slug' => $term->slug,
+                'term_group' => $term->term_group,
+                'term_taxonomy_id' => $term->term_taxonomy_id,
+                'taxonomy' => $term->taxonomy,
+                'description' => $term->description,
+                'parent' => $term->parent,
+                'count' => $term->count,
+                'filter' => $term->filter
+            );
         }
     
-        foreach ($terms as $term) {
-            if ($term->parent != 0) {
-                if (isset($hierarchy[$term->parent])) {
-                    $hierarchy[$term->parent]['children'][] = $term;
-                } else {
-                    $hierarchy[$term->parent] = array('term' => null, 'children' => array($term));
-                }
-            }
-        }
-    
-        $codes = [];
-        
-        // Process the hierarchy to generate UNSPSC codes
-        foreach ($hierarchy as $parent) {
-            if (!empty($parent['term']) && empty($parent['children'])) {
-                // Case 1: Categories which don't have children
-                $codes[] = $parent['term']->name; 
-            } elseif (!empty($parent['term']) && !empty($parent['children'])) {
-                // Case 2: Categories with children as 'category name - subcategory name'
-                foreach ($parent['children'] as $child) {
-                    $unspsc_code_with_child = $parent['term']->name . '-' . $child->name;
-                    $codes[] = $unspsc_code_with_child;
-                }
-            } elseif (empty($parent['term']) && !empty($parent['children'])) {
-                // Case 3: Subcategories which don't have a parent category
-                foreach ($parent['children'] as $child) {
-                    $is_orphan = true;
-                    foreach ($hierarchy as $potential_parent) {
-                        if (!empty($potential_parent['term']) && $child->parent == $potential_parent['term']->term_id) {
-                            $is_orphan = false;
-                            break;
-                        }
-                    }
-                    if ($is_orphan) {
-                        $codes[] = $child->name;
-                    }
-                }
-            }
-        }
-    
-        // Return unique and relevant UNSPSC codes
-        return array_unique($codes);
+        return $terms_array;
     }
-    
-    
-    // function get_unspsc_codes($product_id) {
-    //     $taxonomy = 'product_cat';
-    //     $terms = wp_get_post_terms($product_id, $taxonomy, array('fields' => 'all'));
-    //     $hierarchy = array();
-    
-    //     // Initial setup for all terms, assume they might be top-level unless found otherwise
-    //     foreach ($terms as $term) {
-    //         if (!isset($hierarchy[$term->term_id])) {
-    //             $hierarchy[$term->term_id] = array('term' => $term, 'children' => array());
-    //         }
-    //     }
-    
-    //     // Organize terms into hierarchy
-    //     foreach ($terms as $term) {
-    //         if ($term->parent != 0) {
-    //             if (isset($hierarchy[$term->parent])) {
-    //                 $hierarchy[$term->parent]['children'][] = $term;
-    //             } else {
-    //                 // This part handles cases where the parent is not assigned directly
-    //                 $hierarchy[$term->parent] = array('term' => null, 'children' => array($term));
-    //             }
-    //         }
-    //     }
-    
-    //     // Build separate UNSPSC codes for each top-level category
-    //     $codes = [];
-    //     foreach ($hierarchy as $parent) {
-    //         if (!empty($parent['term']) && empty($parent['children'])) {
-    //             // Parent term exists and has no children
-    //             $codes[] = $parent['term']->name; // Include parent-only code
-    //         } elseif (!empty($parent['term']) && !empty($parent['children'])) {
-    //             // Parent term exists and has children, include only parent with subcategories
-    //             foreach ($parent['children'] as $child) {
-    //                 $unspsc_code_with_child = $parent['term']->name . '-' . $child->name;
-    //                 $codes[] = $unspsc_code_with_child; // Include parent with children code
-    //             }
-    //         } elseif (empty($parent['term']) && !empty($parent['children'])) {
-    //             // Handling orphaned sub-categories: include only subcategories without their own parent
-    //             foreach ($parent['children'] as $child) {
-    //                 $is_orphan = true;
-    //                 foreach ($hierarchy as $potential_parent) {
-    //                     if (!empty($potential_parent['term']) && $child->parent == $potential_parent['term']->term_id) {
-    //                         $is_orphan = false;
-    //                         break;
-    //                     }
-    //                 }
-    //                 if ($is_orphan) {
-    //                     $codes[] = $child->name; // Include orphaned sub-category code
-    //                 }
-    //             }
-    //         }
-    //     }
-    
-    //     // Filter out "category-sub category" codes if both parent and child exist standalone
-    //     $filtered_codes = array_filter($codes, function($code) use ($codes) {
-    //         if (strpos($code, '-') !== false) {
-    //             list($parent, $child) = explode('-', $code);
-    //             return !(in_array($parent, $codes) && in_array($child, $codes));
-    //         }
-    //         return true;
-    //     });
-    
-    //     return array_unique($filtered_codes);
-    // }
-    
+	
     function sendPunchOutOrder($cxmlData)
     {
         global $wpdb ,$session_manager;
