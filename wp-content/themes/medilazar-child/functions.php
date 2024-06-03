@@ -1928,61 +1928,48 @@ function remove_custom_fields_meta_box() {
 
 // Custom Product Prices
 
-
-/*
 add_filter('woocommerce_product_get_price', 'custom_role_based_pricing', 99, 2);
 add_filter('woocommerce_product_get_regular_price', 'custom_role_based_pricing', 99, 2);
+// add_filter('woocommerce_product_variation_get_price', 'custom_role_based_pricing', 99, 2);
+// add_filter('woocommerce_product_variation_get_regular_price', 'custom_role_based_pricing', 99, 2);
 
 function custom_role_based_pricing($price, $product) {
     if (is_admin() && !defined('DOING_AJAX')) return $price;
 
     $user = wp_get_current_user();
-    $fixed_discount = get_post_meta($product->get_id(), 'fixed_discount', true);
 
-        $agreed_price = get_post_meta($product->get_id(), 'agreed_price', true);
-        if (!empty($agreed_price)) {
-            return $agreed_price;
+    if (in_array('customer', $user->roles)) { 
+        $user_tarifas = get_field('user_tarifas', 'user_' . $user->ID); // Get the ACF field value
+
+        error_log('user tarifas : '.$user_tarifas);
+        if ($user_tarifas == 'tarifa_1') {
+            return $price;
         }
 
-    if (!empty($fixed_discount) && $fixed_discount > 0) {
-        $discounted_price = $price - ($price * ($fixed_discount / 100));
-        return $discounted_price;
+        if ($user_tarifas == 'tarifa_2') {
+            $price_on_request = 0;
+            error_log('price on request : '.$price_on_request);
+            return $price_on_request; // Price on Request
+        }
+
+        if ($user_tarifas == 'tarifa_3') {
+            $fixed_discount = get_post_meta($product->get_id(), 'fixed_discount', true);
+
+            error_log('fix discounted price : '.$fixed_discount);
+            if (!empty($fixed_discount)) {              
+                return $fixed_discount;
+            }
+        }
+
+        if ($user_tarifas == 'tarifa_4') {
+            return $price;
+        }
     }
 
-    return $price;
+    return $price; // Return default price if no conditions met
 }
 
-*/
 
-// function custom_role_based_pricing($price, $product) {
-//     if (is_admin() && !defined('DOING_AJAX')) return $price;
-
-//     $user = wp_get_current_user();
-
-//     if (in_array('specific_role', $user->roles)) { // Replace 'specific_role' with the actual role ID
-//         $agreed_price = get_post_meta($product->get_id(), 'agreed_price', true);
-//         if (!empty($agreed_price)) {
-//             return $agreed_price;
-//         }
-
-//         $fixed_discount = get_post_meta($product->get_id(), 'fixed_discount', true);
-//         if (!empty($fixed_discount)) {
-//             $discounted_price = $price - ($price * ($fixed_discount / 100));
-//             return $discounted_price;
-//         }
-
-//         $price_request = get_post_meta($product->get_id(), 'price_request', true);
-//         if ($price_request) {
-//             return ''; // Return empty string for "Price on Request"
-//         }
-//     }
-
-//     return $price; // Return default price if no conditions met
-// }
-
-
-
-/*
 
 add_filter('woocommerce_is_purchasable', 'custom_purchasable_logic', 10, 2);
 function custom_purchasable_logic($purchasable, $product) {
@@ -1993,7 +1980,7 @@ function custom_purchasable_logic($purchasable, $product) {
     return $purchasable;
 }
 
-
+/*
 
 add_action('woocommerce_product_options_pricing', 'add_custom_rate_fields');
 function add_custom_rate_fields() {
@@ -2041,34 +2028,6 @@ function apply_custom_discount_rates($price, $product) {
 
 
 */
-
-
-
-//Removing Contents for UNAV Users
-
-// function redirect_customers_from_myaccount() {
-//     if (is_account_page()) {
-//         if (current_user_can('customer')) {
-//             wp_redirect(home_url()); // Redirect to the homepage
-//             exit;
-//         }
-//     }
-// }
-// add_action('template_redirect', 'redirect_customers_from_myaccount');
-
-// function remove_my_account_links_for_customers($items, $menu, $args) {
-//     if (current_user_can('customer')) {
-//         foreach ($items as $key => $item) {
-//             if ($item->url === wc_get_page_permalink('myaccount')) {
-//                 unset($items[$key]);
-//             }
-//         }
-//     }
-//     return $items;
-// }
-
-// add_filter('wp_get_nav_menu_items', 'remove_my_account_links_for_customers', 10, 3);
-
 
 add_filter('woocommerce_cart_needs_shipping', 'remove_shipping_for_session_specific_users', 10, 1);
 function remove_shipping_for_session_specific_users($needs_shipping) {
