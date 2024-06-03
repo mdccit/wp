@@ -516,64 +516,87 @@ class Cart_Manager {
         return $cxmlItems;
     }
 
-	
 	function get_unspsc_codes($product_id){
         $item = array(
-        'product_id' => $product_id, 
+            'product_id' => $product_id, 
         );
-
+    
         // Get product categories associated with the product ID as an array of names
-        $categories = wp_get_post_terms( $item['product_id'], 'product_cat', array( 'fields' => 'all' ) );
-        $categories_arr =  $this->convert_wp_term_to_array($categories);
-
+        $categories = wp_get_post_terms($item['product_id'], 'product_cat', array('fields' => 'all'));
+        $categories_arr = $this->convert_wp_term_to_array($categories);
+    
+        $term_name_map = array();
+        foreach ($categories_arr as $category) {
+            $term_name_map[$category['term_id']] = $category['name'];
+        }
+    
         $parent_categories = array();
         $child_categories = array();
-
+    
         // Separate parent and child categories
-        foreach ( $categories_arr as $category ) {
-            if ( $category['parent'] == 0 ) {
+        foreach ($categories_arr as $category) {
+            if ($category['parent'] == 0) {
                 $parent_categories[] = $category;
             } else {
                 $child_categories[] = $category;
             }
         }
-
+    
         // Merge parent and child categories
-        $sorted_categories = array_merge( $parent_categories, $child_categories );
-
+        $sorted_categories = array_merge($parent_categories, $child_categories);
+    
         $organized_categories = array();
-
+    
         // Group categories by their parent IDs
-        foreach ( $sorted_categories as $cat ) {
-            if ( $cat['parent'] == 0 ) {
+        foreach ($sorted_categories as $cat) {
+            if ($cat['parent'] == 0) {
                 // If the category is a parent, add it directly to the array
-                $organized_categories[ $cat['term_id'] ] = $cat;
+                $organized_categories[$cat['term_id']] = $cat;
+                $organized_categories[$cat['term_id']]['sub'] = array();
             } else {
                 // If the category is a child, add it under its parent category
                 $parent_id = $cat['parent'];
-                if ( !isset($organized_categories[ $parent_id ]['sub']) ) {
-                    $organized_categories[ $parent_id ]['sub'] = array();
+                if (!isset($organized_categories[$parent_id])) {
+                    $parent_term = get_term($parent_id, 'product_cat');
+                    if (!is_wp_error($parent_term) && $parent_term) {
+                        $term_name_map[$parent_term->term_id] = $parent_term->name;
+                        $organized_categories[$parent_id] = array(
+                            'term_id' => $parent_term->term_id,
+                            'name' => $parent_term->name,
+                            'sub' => array()
+                        );
+                    }
                 }
-                $organized_categories[ $parent_id ]['sub'] = $cat;
+                $organized_categories[$parent_id]['sub'][] = $cat;
             }
         }
-
+    
         $formatted_categories = array();
-
-        foreach ( $organized_categories as $cat ) {
-            if(isset($cat['term_id']) && isset($cat['sub'])) {
-                $formatted_categories[] = $cat['name'] . ' - ' . $cat['sub']['name'];
-            } elseif(!isset($cat['term_id']) && isset($cat['sub'])) {
-                $formatted_categories[] = $cat['sub']['name'];
+    
+        foreach ($organized_categories as $cat) {
+            if (isset($cat['term_id']) && !empty($cat['sub'])) {
+                foreach ($cat['sub'] as $sub_cat) {
+                    $formatted_categories[] = $cat['name'] . ' - ' . $sub_cat['name'];
+                }
+            } elseif (isset($cat['sub']) && !empty($cat['sub'])) {
+                foreach ($cat['sub'] as $sub_cat) {
+                    // Use term_name_map to find the parent category name
+                    $parent_name = isset($term_name_map[$sub_cat['parent']]) ? $term_name_map[$sub_cat['parent']] : '';
+                    $formatted_categories[] = $parent_name . ' - ' . $sub_cat['name'];
+                }
             } else {
                 $formatted_categories[] = $cat['name'];
             }
         }
-
+    
+        // Remove any empty entries in case parent_name was not found
+        $formatted_categories = array_filter($formatted_categories, function($value) {
+            return !empty($value);
+        });
+    
         return $formatted_categories;
-
-	}
-
+    }
+    
     function convert_wp_term_to_array($terms) {
         $terms_array = array();
     
@@ -594,6 +617,7 @@ class Cart_Manager {
     
         return $terms_array;
     }
+    
 	
     function sendPunchOutOrder($cxmlData)
     {

@@ -1941,7 +1941,6 @@ function custom_role_based_pricing($price, $product) {
     if (in_array('customer', $user->roles)) { 
         $user_tarifas = get_field('user_tarifas', 'user_' . $user->ID); // Get the ACF field value
 
-        error_log('user tarifas : '.$user_tarifas);
         if ($user_tarifas == 'tarifa_1') {
             return $price;
         }
@@ -1980,54 +1979,6 @@ function custom_purchasable_logic($purchasable, $product) {
     return $purchasable;
 }
 
-/*
-
-add_action('woocommerce_product_options_pricing', 'add_custom_rate_fields');
-function add_custom_rate_fields() {
-    echo '<div class="options_group">';
-
-    for ($i = 1; $i <= 3; $i++) { // Example for 3 different rates
-        woocommerce_wp_text_input(array(
-            'id' => 'discount_rate_' . $i,
-            'label' => sprintf(__('Discount Rate %d (%%):', 'medilazar'), $i),
-            'desc_tip' => 'true',
-            'description' => sprintf(__('Enter the discount rate %d.', 'medilazar'), $i),
-            'type' => 'number',
-            'custom_attributes' => array(
-                'step' => 'any',
-                'min' => '0'
-            ),
-        ));
-    }
-
-    echo '</div>';
-}
-
-
-add_action('woocommerce_admin_process_product_object', 'save_custom_rate_fields');
-function save_custom_rate_fields($product) {
-    for ($i = 1; $i <= 3; $i++) {
-        if (isset($_POST['discount_rate_' . $i])) {
-            $product->update_meta_data('discount_rate_' . $i, sanitize_text_field($_POST['discount_rate_' . $i]));
-        }
-    }
-}
-
-
-add_filter('woocommerce_product_get_price', 'apply_custom_discount_rates', 10, 2);
-function apply_custom_discount_rates($price, $product) {
-    $final_price = $price;
-    for ($i = 1; $i <= 3; $i++) {
-        $rate = $product->get_meta('discount_rate_' . $i);
-        if (!empty($rate)) {
-            $final_price -= ($final_price * ($rate / 100)); // Applying the discount rate
-        }
-    }
-    return $final_price;
-}
-
-
-*/
 
 add_filter('woocommerce_cart_needs_shipping', 'remove_shipping_for_session_specific_users', 10, 1);
 function remove_shipping_for_session_specific_users($needs_shipping) {
@@ -2335,3 +2286,42 @@ function remove_billing_address_new_order_emails($order, $sent_to_admin, $plain_
     }
 }
 
+
+
+// Carousel Product Restrict  By Category
+
+// Function to load the custom Elementor classes
+function load_custom_elementor_classes() {
+    // Ensure the base class file is included
+    if (!class_exists('OSF_Elementor_Carousel_Base')) {
+        require_once ABSPATH . 'wp-content/plugins/medilazar-core/inc/vendors/elementor/abstract/carousel.php';
+    }
+
+    // Define a simple subclass
+    if (!class_exists('OSF_Elementor_Carousel')) {
+        class OSF_Elementor_Carousel extends OSF_Elementor_Carousel_Base {
+            public function get_name() {
+                return 'opal-carousel';
+            }
+
+            public function get_categories() {
+                return array('opal-addons');
+            }
+        }
+    }
+}
+add_action('elementor/init', 'load_custom_elementor_classes');
+
+// Function to filter the query
+function filter_carousel_product_query($query) {
+    if ($query->is_main_query() && !is_admin()) {
+        if (class_exists('OSF_Elementor_Carousel')) {
+            $carousel_instance = new OSF_Elementor_Carousel();
+            $settings = $carousel_instance->get_carousel_settings();
+            if (!empty($settings['tax_query'])) {
+                $query->set('tax_query', $settings['tax_query']);
+            }
+        }
+    }
+}
+add_action('pre_get_posts', 'filter_carousel_product_query');

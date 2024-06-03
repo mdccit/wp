@@ -466,10 +466,8 @@ class OSF_Elementor_Products extends OSF_Elementor_Carousel_Base {
         $restricted_categories = get_field('User_Restricted_Products', 'user_' . $user_id);
     
         if ($restricted_categories) {
-            error_log('Restricted categories (raw): ' . print_r($restricted_categories, true));
             $category_ids = array_map('intval', $restricted_categories);
-            error_log('Restricted categories (after intval): ' . print_r($category_ids, true));
-    
+                
             if (!empty($category_ids)) {
                 error_log('Excluding categories: ' . implode(', ', $category_ids));
                 $atts['tax_query'] = [
