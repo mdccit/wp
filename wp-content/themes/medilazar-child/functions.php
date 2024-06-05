@@ -2289,39 +2289,3 @@ function remove_billing_address_new_order_emails($order, $sent_to_admin, $plain_
 
 
 // Carousel Product Restrict  By Category
-
-// Function to load the custom Elementor classes
-function load_custom_elementor_classes() {
-    // Ensure the base class file is included
-    if (!class_exists('OSF_Elementor_Carousel_Base')) {
-        require_once ABSPATH . 'wp-content/plugins/medilazar-core/inc/vendors/elementor/abstract/carousel.php';
-    }
-
-    // Define a simple subclass
-    if (!class_exists('OSF_Elementor_Carousel')) {
-        class OSF_Elementor_Carousel extends OSF_Elementor_Carousel_Base {
-            public function get_name() {
-                return 'opal-carousel';
-            }
-
-            public function get_categories() {
-                return array('opal-addons');
-            }
-        }
-    }
-}
-add_action('elementor/init', 'load_custom_elementor_classes');
-
-// Function to filter the query
-function filter_carousel_product_query($query) {
-    if ($query->is_main_query() && !is_admin()) {
-        if (class_exists('OSF_Elementor_Carousel')) {
-            $carousel_instance = new OSF_Elementor_Carousel();
-            $settings = $carousel_instance->get_carousel_settings();
-            if (!empty($settings['tax_query'])) {
-                $query->set('tax_query', $settings['tax_query']);
-            }
-        }
-    }
-}
-add_action('pre_get_posts', 'filter_carousel_product_query');

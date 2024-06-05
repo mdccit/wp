@@ -542,10 +542,114 @@ class OSF_Elementor_Products extends OSF_Elementor_Carousel_Base {
             $atts['paginate'] = 'true';
         }
 
-        $shortcode = new WC_Shortcode_Products($atts, $type);
+        $shortcode = new Restricted_WC_Shortcode_Products($atts, $type);
 
         echo $shortcode->get_content();
     }
 }
 
 $widgets_manager->register(new OSF_Elementor_Products());
+
+
+if (!class_exists('Restricted_WC_Shortcode_Products')) {
+
+    class Restricted_WC_Shortcode_Products extends WC_Shortcode_Products {
+
+        protected function product_loop() {
+            $columns  = absint($this->attributes['columns']);
+            $classes  = $this->get_wrapper_classes($columns);
+            $products = $this->get_query_results();
+
+            // Get restricted categories for the current user
+            $user_id = get_current_user_id();
+            $restricted_categories = get_field('User_Restricted_Products', 'user_' . $user_id);
+
+            // Debugging: Log restricted categories
+            error_log('User ID: ' . $user_id);
+            error_log('Restricted Categories: ' . print_r($restricted_categories, true));
+
+            ob_start();
+
+            if ($products && $products->ids) {
+                // Filter out products that belong to restricted categories
+                $filtered_product_ids = array_filter($products->ids, function($product_id) use ($restricted_categories) {
+                    $product_categories = wp_get_post_terms($product_id, 'product_cat', array('fields' => 'ids'));
+
+                    // Debugging: Log product categories
+                    error_log('Product ID: ' . $product_id);
+                    error_log('Product Categories: ' . print_r($product_categories, true));
+
+                    // Exclude products that belong to restricted categories
+                    return empty(array_intersect($product_categories, $restricted_categories));
+                });
+
+                // Debugging: Log filtered product IDs
+                error_log('Filtered Product IDs: ' . print_r($filtered_product_ids, true));
+
+                // Prime caches to reduce future queries.
+                if (is_callable('_prime_post_caches')) {
+                    _prime_post_caches($filtered_product_ids);
+                }
+
+                // Setup the loop.
+                wc_setup_loop(
+                    array(
+                        'columns'      => $columns,
+                        'name'         => $this->type,
+                        'is_shortcode' => true,
+                        'is_search'    => false,
+                        'is_paginated' => wc_string_to_bool($this->attributes['paginate']),
+                        'total'        => count($filtered_product_ids),
+                        'total_pages'  => ceil(count($filtered_product_ids) / $products->per_page),
+                        'per_page'     => $products->per_page,
+                        'current_page' => $products->current_page,
+                    )
+                );
+
+                $original_post = $GLOBALS['post'];
+
+                do_action("woocommerce_shortcode_before_{$this->type}_loop", $this->attributes);
+
+                // Fire standard shop loop hooks when paginating results so we can show result counts and so on.
+                if (wc_string_to_bool($this->attributes['paginate'])) {
+                    do_action('woocommerce_before_shop_loop');
+                }
+
+                woocommerce_product_loop_start();
+
+                if (wc_get_loop_prop('total')) {
+                    foreach ($filtered_product_ids as $product_id) {
+                        $GLOBALS['post'] = get_post($product_id); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
+                        setup_postdata($GLOBALS['post']);
+
+                        // Set custom product visibility when querying hidden products.
+                        add_action('woocommerce_product_is_visible', array($this, 'set_product_as_visible'));
+
+                        // Render product template.
+                        wc_get_template_part('content', 'product');
+
+                        // Restore product visibility.
+                        remove_action('woocommerce_product_is_visible', array($this, 'set_product_as_visible'));
+                    }
+                }
+
+                $GLOBALS['post'] = $original_post; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
+                woocommerce_product_loop_end();
+
+                // Fire standard shop loop hooks when paginating results so we can show result counts and so on.
+                if (wc_string_to_bool($this->attributes['paginate'])) {
+                    do_action('woocommerce_after_shop_loop');
+                }
+
+                do_action("woocommerce_shortcode_after_{$this->type}_loop", $this->attributes);
+
+                wp_reset_postdata();
+                wc_reset_loop();
+            } else {
+                do_action("woocommerce_shortcode_{$this->type}_loop_no_results", $this->attributes);
+            }
+
+            return '<div class="' . esc_attr(implode(' ', $classes)) . '">' . ob_get_clean() . '</div>';
+        }
+    }
+}
