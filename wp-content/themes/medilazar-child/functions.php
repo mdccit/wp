@@ -1952,16 +1952,17 @@ function custom_role_based_pricing($price, $product) {
         }
 
         if ($user_tarifas == 'tarifa_3') {
-            $fixed_discount = get_post_meta($product->get_id(), 'fixed_discount', true);
-
-            error_log('fix discounted price : '.$fixed_discount);
+            $fixed_discount = get_post_meta($product->get_id(), 'agreed_price', true);
             if (!empty($fixed_discount)) {              
                 return $fixed_discount;
             }
         }
 
         if ($user_tarifas == 'tarifa_4') {
-            return $price;
+            $fixed_discount = get_post_meta($product->get_id(), 'fixed_discount', true);
+            if (!empty($fixed_discount)) {              
+                return $fixed_discount;
+            }
         }
     }
 
@@ -2287,5 +2288,35 @@ function remove_billing_address_new_order_emails($order, $sent_to_admin, $plain_
 }
 
 
+// Add ACF fields to WooCommerce REST API response
+function register_acf_fields_in_api() {
+    register_rest_field( 'customer', 'user_tarifa', array(
+        'get_callback'    => 'get_acf_fields_for_customers',
+        'update_callback' => null,
+        'schema'          => null,
+    ));
+}
 
-// Carousel Product Restrict  By Category
+add_action( 'rest_api_init', 'register_acf_fields_in_api' );
+
+function get_acf_fields_for_customers( $customer, $field_name, $request ) {
+    $user_id = $customer['id'];
+    return get_field('user_tarifas', 'user_' . $user_id);
+}
+
+
+function register_product_acf_fields_in_api() {
+    $fields_to_add = ['price_request', 'agreed_price', 'fixed_discount', 'other_rate'];
+
+    foreach ($fields_to_add as $field_name) {
+        register_rest_field('product', $field_name, array(
+            'get_callback' => function($product, $field_name, $request) {
+                return get_field($field_name, $product['id']);
+            },
+            'update_callback' => null,
+            'schema' => null,
+        ));
+    }
+}
+
+add_action('rest_api_init', 'register_product_acf_fields_in_api');

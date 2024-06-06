@@ -564,27 +564,20 @@ if (!class_exists('Restricted_WC_Shortcode_Products')) {
             $user_id = get_current_user_id();
             $restricted_categories = get_field('User_Restricted_Products', 'user_' . $user_id);
 
-            // Debugging: Log restricted categories
-            error_log('User ID: ' . $user_id);
-            error_log('Restricted Categories: ' . print_r($restricted_categories, true));
-
             ob_start();
 
             if ($products && $products->ids) {
-                // Filter out products that belong to restricted categories
-                $filtered_product_ids = array_filter($products->ids, function($product_id) use ($restricted_categories) {
-                    $product_categories = wp_get_post_terms($product_id, 'product_cat', array('fields' => 'ids'));
 
-                    // Debugging: Log product categories
-                    error_log('Product ID: ' . $product_id);
-                    error_log('Product Categories: ' . print_r($product_categories, true));
+                if (!is_array($restricted_categories)) {
+                    $restricted_categories = []; // Assign an empty array if it's not an array
+                }
+                    // Filter out products that belong to restricted categories
+                    $filtered_product_ids = array_filter($products->ids, function($product_id) use ($restricted_categories) {
+                    $product_categories = wp_get_post_terms($product_id, 'product_cat', array('fields' => 'ids'));
 
                     // Exclude products that belong to restricted categories
                     return empty(array_intersect($product_categories, $restricted_categories));
                 });
-
-                // Debugging: Log filtered product IDs
-                error_log('Filtered Product IDs: ' . print_r($filtered_product_ids, true));
 
                 // Prime caches to reduce future queries.
                 if (is_callable('_prime_post_caches')) {
